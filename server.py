@@ -94,6 +94,20 @@ def home_dashboard():
     """מגיש את ממשק הדשבורד"""
     return send_from_directory(BASE_DIR, 'home.html')
 
+@app.route('/api/obs-template', methods=['GET'])
+@app.route('/live-edits-obs-template.json', methods=['GET'])
+def download_obs_template():
+    """מוריד את קובץ התבנית של OBS להקלטת גריד 4K"""
+    template_path = os.path.join(BASE_DIR, 'live-edits-obs-template.json')
+    if os.path.exists(template_path):
+        return send_file(
+            template_path,
+            mimetype='application/json',
+            as_attachment=True,
+            download_name='live-edits-obs-template.json'
+        )
+    return jsonify({"status": "error", "message": "קובץ התבנית לא נמצא"}), 404
+
 @app.route('/api/recordings', methods=['GET'])
 def get_recordings():
     """מחזיר את כל ההקלטות מהלוג"""

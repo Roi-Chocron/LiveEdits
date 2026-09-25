@@ -29,6 +29,10 @@
 
         <!-- Left Side: Navigation Links & Actions -->
         <div class="flex items-center gap-3">
+            <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2">
+                <i class="fa-solid fa-cloud-arrow-down"></i>
+                <span class="hidden sm:inline">הורדת תבנית OBS</span>
+            </a>
             <a href="/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner">
                 <i class="fa-solid fa-gamepad ml-1"></i> מעבר ל-Stream Deck
             </a>
@@ -39,6 +43,63 @@
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-10">
+
+        <!-- Banner: 4K Grid Recording & OBS Template (Zero-Setup Experience) -->
+        <section class="bg-gradient-to-r from-indigo-50/80 via-white to-slate-50 border border-indigo-200/80 rounded-2xl p-6 shadow-sm">
+            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-indigo-100 pb-4">
+                <div class="flex items-start gap-3.5">
+                    <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0">
+                        <i class="fa-solid fa-border-all"></i>
+                    </div>
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <h2 class="text-xl font-bold text-gray-900">הגדרת הקלטת 4K Grid (Zero-Setup OBS)</h2>
+                            <span class="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-bold">חדש</span>
+                        </div>
+                        <p class="text-xs text-gray-600 mt-1 max-w-2xl">
+                            הפרדת שכבות שידור (Game, Facecam, Alerts, Extra) מקובץ וידאו יחיד ברזולוציית 4K ללא עומס על המחשב.
+                        </p>
+                    </div>
+                </div>
+                <a href="/api/obs-template" download="live-edits-obs-template.json" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
+                    <i class="fa-solid fa-cloud-arrow-down"></i>
+                    Download OBS Template
+                </a>
+            </div>
+
+            <!-- 3 Simple Steps -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
+                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">1</div>
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-800">התקנת התוסף</h4>
+                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                            <strong>1. Install Source Record plugin</strong> ב-OBS Studio.
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">2</div>
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-800">ייבוא התבנית</h4>
+                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                            <strong>2. Import this JSON in OBS</strong> (בתפריט <em>Scene Collection &rarr; Import</em>).
+                        </p>
+                    </div>
+                </div>
+
+                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
+                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">3</div>
+                    <div>
+                        <h4 class="text-sm font-bold text-gray-800">מיפוי שכבות</h4>
+                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
+                            <strong>3. Map your camera and game</strong> לשכבות Game, Facecam, Alerts ו-Extra.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
 
         <!-- Section 1: Connected Editors (עורכים מחוברים) -->
         <section class="flex flex-col gap-4">
