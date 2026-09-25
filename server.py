@@ -108,6 +108,14 @@ def download_obs_template():
         )
     return jsonify({"status": "error", "message": "קובץ התבנית לא נמצא"}), 404
 
+@app.route('/api/obs/setup-canvas', methods=['POST', 'GET'])
+def setup_obs_canvas():
+    """מגדיר את רזולוציית OBS ישירות ל-4K גריד (3840x2160) דרך ה-WebSocket"""
+    success, msg = obs_controller_instance.configure_canvas(3840, 2160)
+    if success:
+        return jsonify({"status": "success", "message": msg})
+    return jsonify({"status": "error", "message": msg}), 500
+
 @app.route('/api/recordings', methods=['GET'])
 def get_recordings():
     """מחזיר את כל ההקלטות מהלוג"""

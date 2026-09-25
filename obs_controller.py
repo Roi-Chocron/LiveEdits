@@ -52,6 +52,22 @@ class OBSManager:
         else:
             print("ℹ️ OBS אינו פועל כרגע (ניתן להמשיך להשתמש בעורך ולצפות בהקלטות)")
 
+    def configure_canvas(self, width=3840, height=2160):
+        """מגדיר את רזולוציית הקאנבס והפלט של OBS ל-4K (3840x2160) באופן אוטומטי"""
+        if not self.ensure_client():
+            return False, "אין חיבור פעיל ל-OBS"
+        try:
+            settings = self.client.get_video_settings()
+            fps_num = getattr(settings, 'fps_numerator', 60)
+            fps_den = getattr(settings, 'fps_denominator', 1)
+            self.client.set_video_settings(fps_num, fps_den, width, height, width, height)
+            print(f"✅ רזולוציית OBS הוגדרה בהצלחה ל-{width}x{height} (4K Grid)")
+            return True, f"רזולוציית הקאנבס והפלט הוגדרה בהצלחה ל-{width}x{height}"
+        except Exception as e:
+            msg = f"שגיאה בהגדרת רזולוציית OBS: {e}"
+            print(f"⚠️ {msg}")
+            return False, msg
+
     def ensure_client(self):
         """מוודא חיבור פעיל ל-OBS ומנסה להתחבר מחדש במידת הצורך"""
         if self.client:
@@ -69,10 +85,16 @@ class OBSManager:
         return False
 
     def start_recording(self, action_name):
-        """מתחיל הקלטה ושומר את נתוני ההתחלה"""
+        """מתחיל הקלטה ושומר את נתוני ההתחלה, תוך וידוא שהקאנבס מוגדר ל-4K"""
         if not self.ensure_client():
             raise Exception("אין חיבור פעיל ל-OBS. ודא שתוכנת OBS פועלת ושה-WebSocket מופעל.")
         
+        # וידוא רזולוציית 4K עבור גריד
+        try:
+            self.configure_canvas(3840, 2160)
+        except Exception as e:
+            print(f"הערה: לא ניתן היה לשנות רזולוציה לפני הקלטה: {e}")
+
         try:
             self.client.start_record()
         except Exception:

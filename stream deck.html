@@ -29,6 +29,10 @@
 
         <!-- Left Side: Navigation Links & Actions -->
         <div class="flex items-center gap-3">
+            <button onclick="setupOBSCanvas()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2 cursor-pointer" title="מגדיר את רזולוציית OBS ל-4K">
+                <i class="fa-solid fa-sliders"></i>
+                <span>הגדרת OBS ל-4K</span>
+            </button>
             <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2">
                 <i class="fa-solid fa-cloud-arrow-down"></i>
                 <span>הורדת תבנית OBS</span>
@@ -170,6 +174,25 @@
             } catch (err) {
                 if (statusDiv) statusDiv.textContent = `❌ שגיאת תקשורת מול השרת המקומי`;
                 console.error(err);
+            }
+        }
+
+        async function setupOBSCanvas() {
+            const statusDiv = document.getElementById('status-msg');
+            if (statusDiv) statusDiv.textContent = 'מגדיר רזולוציית 4K ב-OBS...';
+            try {
+                const res = await fetch('/api/obs/setup-canvas', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    if (statusDiv) statusDiv.textContent = '✅ ' + data.message;
+                    alert('✅ ' + data.message + ' (Base & Output 3840x2160)');
+                } else {
+                    if (statusDiv) statusDiv.textContent = '❌ ' + data.message;
+                    alert('❌ שגיאה: ' + data.message);
+                }
+            } catch (err) {
+                if (statusDiv) statusDiv.textContent = '❌ שגיאה: ' + err.message;
+                alert('❌ שגיאה בפנייה לשרת: ' + err.message);
             }
         }
     </script>
