@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>עריכת סרטון</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        body {
+            font-family: 'Assistant', sans-serif;
+            background-color: #f7f9fc;
+        }
+    </style>
+</head>
+<body class="min-p-0 m-0 text-gray-800">
+
+    <header class="w-full bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
+        <!-- Right Side: User greeting & avatar -->
+        <div class="flex items-center gap-3">
+            <div class="w-11 h-11 rounded-full bg-gray-300 border-2 border-gray-400 overflow-hidden shadow">
+                <img src="https://placehold.co/100x100/d1d5db/4b5563?text=" alt="תמונת פרופיל" class="w-full h-full object-cover">
+            </div>
+            <span class="font-semibold text-lg text-gray-700">שלום עודד</span>
+        </div>
+
+        <!-- Left Side: Navigation Links & Actions -->
+        <div class="flex items-center gap-3">
+            <a href="/home" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner">
+                <i class="fa-solid fa-gamepad ml-1"></i> מעבר ל-home
+            </a>
+        </div>
+    </header>
+
+    <main class="max-w-7xl mx-auto px-6 py-16 flex flex-col items-center justify-center min-h-[75vh]">
+        
+        <!-- הודעת סטטוס -->
+        <div id="status-msg" class="mb-6 text-lg font-semibold text-blue-600 h-8"></div>
+
+        <!-- Grid of 8 buttons -->
+        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 w-full max-w-4xl">
+            <!-- Button 1: ריאקשן -->
+            <button onclick="handleAction('ריאקשן')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                ריאקשן
+            </button>
+
+            <!-- Button 2: דרמה -->
+            <button onclick="handleAction('דרמה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                דרמה
+            </button>
+
+            <!-- Button 3: גיימינג -->
+            <button onclick="handleAction('גיימינג')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                גיימינג
+            </button>
+
+            <!-- Button 4: אחר -->
+            <button onclick="handleAction('אחר')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                אחר
+            </button>
+
+            <!-- Button 5: השהיה/המשך -->
+            <button onclick="handleAction('השהיה/המשך')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                השהיה/המשך
+            </button>
+
+            <!-- Button 6: סיום וחזרה -->
+            <button onclick="handleAction('סיום וחזרה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                סיום וחזרה
+            </button>
+
+            <!-- Button 7: סיום בלבד -->
+            <button onclick="handleAction('סיום בלבד')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                סיום בלבד
+            </button>
+
+            <!-- Button 8: חפיפה -->
+            <button onclick="handleAction('חפיפה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
+                חפיפה
+            </button>
+        </div>
+
+    </main>
+
+    <script>
+        async function handleAction(actionName) {
+            const statusDiv = document.getElementById('status-msg');
+            if (statusDiv) statusDiv.textContent = `מעבד פעולה: ${actionName}...`;
+
+            try {
+                const response = await fetch('http://127.0.0.1:5000/control', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ action: actionName })
+                });
+                const data = await response.json();
+
+                if (response.ok) {
+                    if (statusDiv) {
+                        if (data.path) {
+                            statusDiv.textContent = `✅ ההקלטה נשמרה ב: ${data.path}`;
+                        } else {
+                            statusDiv.textContent = `✅ ${data.message}`;
+                        }
+                    }
+                } else {
+                    if (statusDiv) statusDiv.textContent = `❌ שגיאה: ${data.message}`;
+                }
+            } catch (err) {
+                if (statusDiv) statusDiv.textContent = `❌ שגיאת תקשורת מול השרת המקומי`;
+                console.error(err);
+            }
+        }
+    </script>
+</body>
+</html>
