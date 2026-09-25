@@ -6,5 +6,28 @@
         "date_time": "2026-09-25 03:48:56",
         "duration": "00:00:02",
         "thumbnail": "/api/thumbnail/2026-09-25 03-48-56.jpg"
+    },
+    {
+        "id": "export-1790300659",
+        "file_name": "2026-09-25_03-48-56.mp4",
+        "file_path": "/home/roi/שולחן עבודה/LiveEdits/exports/2026-09-25_03-48-56.mp4",
+        "button_used": "ייצוא עורך",
+        "date_time": "2026-09-25 04:44:19",
+        "duration": "00:00:02",
+        "thumbnail": "/api/thumbnail/2026-09-25_03-48-56.jpg",
+        "status": "ready"
+    },
+    {
+        "id": "d6e91d91-beca-4d1a-99c6-0dcc4535daec",
+        "file_name": "2026-09-25 03-48-56.mp4",
+        "project_name": "2026-09-25 03-48-56",
+        "file_path": "/home/roi/2026-09-25 03-48-56.mp4",
+        "original_path": "/home/roi/2026-09-25 03-48-56.mp4",
+        "button_used": "עריכה בתהליך",
+        "date_time": "2026-09-25 04:44:26",
+        "last_edited": "2026-09-25 04:44:26",
+        "duration": "00:00:02",
+        "thumbnail": "/api/thumbnail/draft_d6e91d91-beca-4d1a-99c6-0dcc4535daec.jpg",
+        "status": "editing"
     }
 ]
