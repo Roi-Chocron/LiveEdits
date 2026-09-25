@@ -61,7 +61,10 @@
         <!-- Section 2: Pending Clips (קליפים בהמתנה - הקלטות OBS חדשות) -->
         <section class="flex flex-col gap-4">
             <div class="border-b-2 border-gray-800 pb-2 flex justify-between items-center">
-                <h2 class="text-2xl font-bold tracking-wide">קליפים בהמתנה (הקלטות OBS)</h2>
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold tracking-wide">קליפים בהמתנה (הקלטות OBS)</h2>
+                    <span id="pendingBadge" class="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                </div>
             </div>
 
             <div id="pendingClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
@@ -70,20 +73,39 @@
             </div>
         </section>
 
-        <!-- Section 3: Ready Clips (קליפים מוכנים) -->
+        <!-- Section 3: In-Progress Clips (קליפים בתהליך עריכה) -->
         <section class="flex flex-col gap-4">
-            <div class="border-b-2 border-gray-800 pb-2">
-                <h2 class="text-2xl font-bold tracking-wide">קליפים מוכנים</h2>
+            <div class="border-b-2 border-amber-600 pb-2 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold tracking-wide text-amber-900 flex items-center gap-2">
+                        <i class="fa-solid fa-scissors text-amber-600"></i> קליפים בתהליך עריכה
+                    </h2>
+                    <span id="editingBadge" class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold border border-amber-300">0</span>
+                </div>
+                <span class="text-xs text-amber-700 font-medium hidden sm:inline">פרויקטים שנשמרו אוטומטית בעת יציאה או התנתקות</span>
             </div>
 
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <div class="bg-gray-200 rounded-xl shadow-md h-56 flex flex-col justify-between p-4 relative border border-gray-300">
-                    <span class="text-xs text-gray-600 font-semibold">14/05/26</span>
-                    <div class="flex justify-between items-end">
-                        <span class="text-sm font-bold text-gray-700">00:15:00</span>
-                        <span class="text-sm font-bold text-gray-700">מוכן</span>
-                    </div>
+            <div id="editingClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                <!-- Dynamically populated from backend drafts -->
+                <div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע קליפים בתהליך עריכה.</div>
+            </div>
+        </section>
+
+        <!-- Section 4: Ready Clips (קליפים מוכנים) -->
+        <section class="flex flex-col gap-4">
+            <div class="border-b-2 border-emerald-600 pb-2 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold tracking-wide text-emerald-900 flex items-center gap-2">
+                        <i class="fa-solid fa-circle-check text-emerald-600"></i> קליפים מוכנים (ייצוא מעורך)
+                    </h2>
+                    <span id="readyBadge" class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-300">0</span>
                 </div>
+                <span class="text-xs text-emerald-700 font-medium hidden sm:inline">נשמרים ישירות בתיקיית exports</span>
+            </div>
+
+            <div id="readyClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
+                <!-- Dynamically populated from backend exports -->
+                <div class="text-gray-400 text-sm py-4 col-span-3">אין עדיין קליפים שיוצאו. לחץ על Export בעורך הוידאו!</div>
             </div>
         </section>
 
@@ -105,18 +127,25 @@
             </div>
 
             <!-- Details Section -->
+            <!-- Details Section -->
             <div class="flex flex-col md:flex-row justify-between gap-6 items-start">
-                <div class="flex flex-col gap-3 w-full md:w-auto md:min-w-[160px] order-2 md:order-1">
-                    <button id="editVideoBtn" onclick="editVideo()" class="w-full bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-300 shadow-sm transition flex items-center justify-center">
-                        <i class="fa-solid fa-scissors ml-2 text-gray-600"></i> עריכת הסרטון
+                <div class="flex flex-col gap-3 w-full md:w-auto md:min-w-[170px] order-2 md:order-1">
+                    <button id="editVideoBtn" onclick="editVideo()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-4 rounded-lg border border-amber-600 shadow-sm transition flex items-center justify-center cursor-pointer">
+                        <i class="fa-solid fa-scissors ml-2"></i> עריכת הסרטון
                     </button>
-                    <button onclick="publishVideo()" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-800 shadow-sm transition">
+                    <a id="modalDownloadBtn" href="#" download class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-300 shadow-sm transition flex items-center justify-center text-center cursor-pointer">
+                        <i class="fa-solid fa-download ml-2 text-gray-600"></i> הורדת קובץ
+                    </a>
+                    <button onclick="publishVideo()" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-800 shadow-sm transition cursor-pointer">
                         פרסום הסרטון
                     </button>
                 </div>
 
                 <div class="flex flex-col gap-2 text-right flex-1 order-1 md:order-2 w-full overflow-hidden">
-                    <h3 id="modalTitle" class="text-xl font-bold text-gray-800">שם הסרטון</h3>
+                    <div class="flex items-center gap-2">
+                        <h3 id="modalTitle" class="text-xl font-bold text-gray-800 truncate">שם הסרטון</h3>
+                        <span id="modalStatusBadge" class="text-xs font-semibold px-2 py-0.5 rounded"></span>
+                    </div>
                     <p id="modalDescription" class="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words">
                         תיאור הסרטון
                     </p>
@@ -127,68 +156,191 @@
 
     <!-- JavaScript for Dynamic Loading & Modal Handling -->
     <script>
+        let currentVideoPath = null;
+        let currentVideoName = null;
+        let currentDraftId = null;
+
         async function loadRecordings() {
-            const container = document.getElementById('pendingClipsContainer');
+            const pendingContainer = document.getElementById('pendingClipsContainer');
+            const editingContainer = document.getElementById('editingClipsContainer');
+            const readyContainer = document.getElementById('readyClipsContainer');
+
+            const pendingBadge = document.getElementById('pendingBadge');
+            const editingBadge = document.getElementById('editingBadge');
+            const readyBadge = document.getElementById('readyBadge');
+
             try {
                 const response = await fetch('/api/recordings');
                 const recordings = await response.json();
 
-                if (recordings.length === 0) {
-                    container.innerHTML = '<div class="text-gray-500 text-sm py-4 col-span-3">אין עדיין הקלטות חדשות. בצע הקלטה דרך ה-Stream Deck!</div>';
-                    return;
-                }
+                const pendingList = [];
+                const editingList = [];
+                const readyList = [];
 
-                container.innerHTML = '';
-                // הפיכת סדר התצוגה בצד הלקוח בלבד - החדש ביותר מופיע ראשון
-                const displayList = [...recordings].reverse();
+                recordings.forEach(rec => {
+                    if (rec.status === 'ready' || rec.is_ready) {
+                        readyList.push(rec);
+                    } else if (rec.status === 'editing') {
+                        editingList.push(rec);
+                    } else {
+                        pendingList.push(rec);
+                    }
+                });
 
-                displayList.forEach(rec => {
-                    const card = document.createElement('div');
-                    card.className = "bg-gray-200 rounded-xl shadow-md h-64 flex flex-col justify-between p-3 relative border border-gray-300 hover:shadow-lg transition cursor-pointer overflow-hidden";
-                    
-                    // Thumbnail image or placeholder
-                    const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #d1d5db;';
+                if (pendingBadge) pendingBadge.innerText = pendingList.length;
+                if (editingBadge) editingBadge.innerText = editingList.length;
+                if (readyBadge) readyBadge.innerText = readyList.length;
 
-                    card.innerHTML = `
-                        <div class="w-full h-36 rounded-lg overflow-hidden relative shadow-inner border border-gray-300" style="${bgStyle}">
-                            <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 hover:opacity-100 transition">
-                                <div class="w-10 h-10 rounded-full bg-white bg-opacity-90 flex items-center justify-center shadow">
-                                    <i class="fa-solid fa-play text-gray-800 ml-0.5"></i>
+                // 1. Pending Clips (הקלטות OBS)
+                if (pendingList.length === 0) {
+                    pendingContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע הקלטות חדשות בהמתנה. בצע הקלטה דרך ה-Stream Deck!</div>';
+                } else {
+                    pendingContainer.innerHTML = '';
+                    [...pendingList].reverse().forEach(rec => {
+                        const card = document.createElement('div');
+                        card.className = "bg-white rounded-xl shadow-sm hover:shadow-md h-64 flex flex-col justify-between p-3 relative border border-gray-200 transition cursor-pointer overflow-hidden group";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #e5e7eb;';
+                        
+                        card.innerHTML = `
+                            <div class="w-full h-36 rounded-lg overflow-hidden relative shadow-inner border border-gray-200" style="${bgStyle}">
+                                <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <div class="w-10 h-10 rounded-full bg-white bg-opacity-95 flex items-center justify-center shadow">
+                                        <i class="fa-solid fa-play text-gray-800 ml-0.5"></i>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <div class="flex justify-between items-start text-xs text-gray-600 font-semibold mt-2">
-                            <span>${rec.date_time}</span>
-                            <span class="bg-gray-300 px-2 py-0.5 rounded text-[11px]">${rec.button_used}</span>
-                        </div>
-                        <div class="flex justify-between items-end">
-                            <span class="text-sm font-bold text-gray-700">${rec.duration}</span>
-                            <span class="text-xs font-semibold text-gray-500 truncate max-w-[150px]">${rec.file_name}</span>
-                        </div>
-                    `;
+                            <div class="flex justify-between items-start text-xs text-gray-500 font-semibold mt-2">
+                                <span>${rec.date_time}</span>
+                                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] border border-gray-200">${rec.button_used || 'הקלטה'}</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-sm font-bold text-gray-800">${rec.duration}</span>
+                                <span class="text-xs font-semibold text-gray-500 truncate max-w-[150px]">${rec.file_name}</span>
+                            </div>
+                        `;
+                        card.onclick = () => openVideoModal(rec.file_name, `נתיב קובץ מלא:\n${rec.file_path}`, rec.file_path, 'pending', rec.id);
+                        pendingContainer.appendChild(card);
+                    });
+                }
 
-                    card.onclick = () => openVideoModal(rec.file_name, `נתיב קובץ מלא:\n${rec.file_path}`, rec.file_path);
-                    container.appendChild(card);
-                });
+                // 2. In-Progress Editing Clips (קליפים בתהליך עריכה)
+                if (editingList.length === 0) {
+                    editingContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע קליפים בתהליך עריכה. לחץ על "עריכת הסרטון" כדי לערוך!</div>';
+                } else {
+                    editingContainer.innerHTML = '';
+                    [...editingList].reverse().forEach(rec => {
+                        const card = document.createElement('div');
+                        card.className = "bg-amber-50/40 rounded-xl shadow-sm hover:shadow-md flex flex-col justify-between p-3.5 relative border border-amber-300 transition cursor-pointer group";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #fef3c7;';
+
+                        card.innerHTML = `
+                            <div class="w-full h-32 rounded-lg overflow-hidden relative shadow-inner border border-amber-200" style="${bgStyle}">
+                                <div class="absolute top-2 right-2">
+                                    <span class="bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                                        <i class="fa-solid fa-spinner fa-spin-pulse text-[10px]"></i> בתהליך עריכה
+                                    </span>
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-1.5 mt-2.5">
+                                <div class="flex justify-between items-center text-xs font-semibold">
+                                    <span class="text-gray-800 font-bold truncate max-w-[170px]">${rec.file_name || rec.project_name}</span>
+                                    <span class="text-amber-800 font-bold">${rec.duration || '00:00:00'}</span>
+                                </div>
+                                <div class="text-[11px] text-gray-500">
+                                    נשמר לאחרונה: ${rec.last_edited || rec.date_time}
+                                </div>
+                                <button onclick="event.stopPropagation(); resumeEditing('${rec.id}', '${encodeURIComponent(rec.original_path || rec.file_path || '')}', '${encodeURIComponent(rec.file_name || '')}')" class="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center shadow-sm cursor-pointer">
+                                    <i class="fa-solid fa-arrow-rotate-right ml-1.5 text-[11px]"></i> המשך עריכה מאיפה שהפסקת
+                                </button>
+                            </div>
+                        `;
+                        card.onclick = () => resumeEditing(rec.id, rec.original_path || rec.file_path || '', rec.file_name || '');
+                        editingContainer.appendChild(card);
+                    });
+                }
+
+                // 3. Ready Clips (קליפים מוכנים)
+                if (readyList.length === 0) {
+                    readyContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין עדיין קליפים שיוצאו. לחץ על Export בעורך הוידאו!</div>';
+                } else {
+                    readyContainer.innerHTML = '';
+                    [...readyList].reverse().forEach(rec => {
+                        const card = document.createElement('div');
+                        card.className = "bg-emerald-50/30 rounded-xl shadow-sm hover:shadow-md h-64 flex flex-col justify-between p-3 relative border border-emerald-300 transition cursor-pointer overflow-hidden group";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #d1fae5;';
+
+                        card.innerHTML = `
+                            <div class="w-full h-36 rounded-lg overflow-hidden relative shadow-inner border border-emerald-200" style="${bgStyle}">
+                                <div class="absolute top-2 right-2">
+                                    <span class="bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
+                                        <i class="fa-solid fa-check text-[10px]"></i> מוכן
+                                    </span>
+                                </div>
+                                <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
+                                    <div class="w-10 h-10 rounded-full bg-white bg-opacity-95 flex items-center justify-center shadow">
+                                        <i class="fa-solid fa-play text-emerald-700 ml-0.5"></i>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex justify-between items-start text-xs text-gray-500 font-semibold mt-2">
+                                <span>${rec.date_time}</span>
+                                <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-bold">ייצוא מוכן</span>
+                            </div>
+                            <div class="flex justify-between items-end">
+                                <span class="text-sm font-bold text-emerald-800">${rec.duration}</span>
+                                <span class="text-xs font-semibold text-gray-600 truncate max-w-[150px]">${rec.file_name}</span>
+                            </div>
+                        `;
+                        card.onclick = () => openVideoModal(rec.file_name, `נשמר בתיקיית exports:\n${rec.file_path}`, rec.file_path, 'ready', rec.id);
+                        readyContainer.appendChild(card);
+                    });
+                }
+
             } catch (err) {
                 console.error(err);
-                container.innerHTML = '<div class="text-red-500 text-sm py-4 col-span-3">שגיאה בטעינת ההקלטות מהשרת.</div>';
+                if (pendingContainer) pendingContainer.innerHTML = '<div class="text-red-500 text-sm py-4 col-span-3">שגיאה בטעינת הנתונים מהשרת.</div>';
             }
         }
 
-        let currentVideoPath = null;
-        let currentVideoName = null;
-
-        function openVideoModal(title, description, filePath) {
+        function openVideoModal(title, description, filePath, status = 'pending', id = null) {
             currentVideoPath = filePath;
             currentVideoName = title;
+            currentDraftId = id;
 
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalDescription').innerText = description;
             
             const videoPlayer = document.getElementById('modalVideoPlayer');
-            videoPlayer.src = `/api/video?path=${encodeURIComponent(filePath)}`;
+            const videoUrl = `/api/video?path=${encodeURIComponent(filePath)}`;
+            videoPlayer.src = videoUrl;
             videoPlayer.load();
+
+            const downloadBtn = document.getElementById('modalDownloadBtn');
+            if (downloadBtn) {
+                downloadBtn.href = videoUrl;
+                downloadBtn.setAttribute('download', title || 'video.mp4');
+            }
+
+            const editBtn = document.getElementById('editVideoBtn');
+            const statusBadge = document.getElementById('modalStatusBadge');
+
+            if (status === 'ready') {
+                if (statusBadge) {
+                    statusBadge.innerText = 'קליפ מוכן';
+                    statusBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+                }
+                if (editBtn) {
+                    editBtn.innerHTML = '<i class="fa-solid fa-scissors ml-2"></i> עריכה מחדש';
+                }
+            } else {
+                if (statusBadge) {
+                    statusBadge.innerText = 'הקלטה ממתינה';
+                    statusBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300';
+                }
+                if (editBtn) {
+                    editBtn.innerHTML = '<i class="fa-solid fa-scissors ml-2"></i> עריכת הסרטון';
+                }
+            }
 
             document.getElementById('videoModal').classList.remove('hidden');
             document.getElementById('videoModal').classList.add('flex');
@@ -203,6 +355,46 @@
             document.getElementById('videoModal').classList.remove('flex');
             document.getElementById('videoModal').classList.add('hidden');
             document.body.style.overflow = 'auto';
+        }
+
+        async function resumeEditing(draftId, filePath, fileName) {
+            let newTab = null;
+            try {
+                newTab = window.open('about:blank', '_blank');
+                if (newTab) {
+                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>ממשיך עריכה...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111827;color:#f3f4f6;font-family:sans-serif;"><div style="font-size:40px;margin-bottom:16px;">✂️</div><div style="font-size:20px;font-weight:600;">ממשיך את עריכת הסרטון מאיפה שהפסקת...</div><div style="font-size:14px;color:#9ca3af;margin-top:8px;">טוען את נתוני הפרויקט והציר, אנא המתן רגע...</div></body></html>');
+                }
+            } catch (e) {
+                console.warn(e);
+            }
+
+            try {
+                const response = await fetch('/api/open-editor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        draftId: draftId,
+                        path: filePath || undefined,
+                        name: fileName || undefined
+                    })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success' && data.url) {
+                    if (newTab && !newTab.closed) {
+                        newTab.location.href = data.url;
+                    } else {
+                        window.open(data.url, '_blank') || (window.location.href = data.url);
+                    }
+                } else {
+                    if (newTab && !newTab.closed) newTab.close();
+                    alert('שגיאה בהמשך העריכה: ' + (data.message || 'שגיאה לא ידועה'));
+                }
+            } catch (err) {
+                console.error(err);
+                if (newTab && !newTab.closed) newTab.close();
+                alert('שגיאה בפנייה לשרת: ' + err.message);
+            }
         }
 
         async function editVideo() {
@@ -263,7 +455,7 @@
         }
 
         function publishVideo() {
-            // Internal logic
+            alert('הסרטון נשלח לפרסום!');
         }
 
         window.onclick = function(event) {

@@ -1,5 +1,7 @@
 venv/
 __pycache__/
 thumbnails/
+exports/
+drafts/
 openreel-video/
 *.pyc

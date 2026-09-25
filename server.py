@@ -5,6 +5,9 @@ import shutil
 import time
 import urllib.request
 import urllib.parse
+import json
+from datetime import datetime
+from werkzeug.utils import secure_filename
 
 # מייבאים את מנהל ה-OBS מהקובץ החדש שיצרנו
 from obs_controller import obs_controller_instance
@@ -13,6 +16,12 @@ app = Flask(__name__)
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 THUMBNAILS_DIR = os.path.join(BASE_DIR, 'thumbnails')
+EXPORTS_DIR = os.path.join(BASE_DIR, 'exports')
+DRAFTS_DIR = os.path.join(BASE_DIR, 'drafts')
+
+os.makedirs(THUMBNAILS_DIR, exist_ok=True)
+os.makedirs(EXPORTS_DIR, exist_ok=True)
+os.makedirs(DRAFTS_DIR, exist_ok=True)
 
 @app.after_request
 def add_cors_headers(response):
@@ -108,15 +117,24 @@ def stream_video():
 
 @app.route('/api/open-editor', methods=['POST', 'OPTIONS'])
 def open_editor():
-    """בודק/מפעיל את openreel-video ומחזיר את כתובת ה-URL לעריכת הסרטון"""
+    """בודק/מפעיל את openreel-video ומחזיר את כתובת ה-URL לעריכת הסרטון או המשך טיוטה"""
     if request.method == 'OPTIONS':
         return '', 204
 
     data = request.get_json() or {}
     video_path = data.get('path')
+    draft_id = data.get('draftId')
     video_name = data.get('name') or (os.path.basename(video_path) if video_path else 'recording.mp4')
 
-    if not video_path or not os.path.exists(video_path):
+    # אם זו טיוטה קיימת ואין נתיב וידאו מפורש, ננסה להוציא מהטיוטה
+    if draft_id and not video_path:
+        recordings = obs_controller_instance.get_all_recordings()
+        draft_info = next((r for r in recordings if r.get('id') == draft_id), {})
+        video_path = draft_info.get('original_path') or draft_info.get('file_path')
+        if not video_name or video_name == 'recording.mp4':
+            video_name = draft_info.get('file_name') or 'recording.mp4'
+
+    if not draft_id and (not video_path or not os.path.exists(video_path)):
         return jsonify({"status": "error", "message": "קובץ הוידאו לא נמצא"}), 404
 
     port = start_openreel()
@@ -124,16 +142,165 @@ def open_editor():
         return jsonify({"status": "error", "message": "לא ניתן להפעיל את openreel-video"}), 500
 
     base_host = request.host_url.rstrip('/')
-    # URL להזרמת הסרטון מהשרת
-    video_stream_url = f"{base_host}/api/video?path={urllib.parse.quote(video_path)}"
+    url_params = []
 
-    # URL לפתיחת OpenReel ישירות בעורך עם הסרטון
-    editor_url = f"http://localhost:{port}/#/editor?videoUrl={urllib.parse.quote(video_stream_url, safe='')}&videoName={urllib.parse.quote(video_name, safe='')}"
+    if draft_id:
+        url_params.append(f"draftId={urllib.parse.quote(draft_id)}")
+    
+    if video_path and os.path.exists(video_path):
+        video_stream_url = f"{base_host}/api/video?path={urllib.parse.quote(video_path)}"
+        url_params.append(f"videoUrl={urllib.parse.quote(video_stream_url, safe='')}")
+        url_params.append(f"videoName={urllib.parse.quote(video_name, safe='')}")
+
+    query_string = "&".join(url_params)
+    editor_url = f"http://localhost:{port}/#/editor?{query_string}"
 
     return jsonify({
         "status": "success",
         "url": editor_url,
         "port": port
+    })
+
+@app.route('/api/drafts/save', methods=['POST', 'OPTIONS'])
+def save_draft():
+    """שומר טיוטה בתהליך עריכה כדי לאפשר המשך עבודה מאיפה שהפסיק"""
+    if request.method == 'OPTIONS':
+        return '', 204
+
+    if request.is_json:
+        data = request.get_json() or {}
+    else:
+        try:
+            raw_text = request.get_data(as_text=True)
+            data = json.loads(raw_text) if raw_text else {}
+        except Exception:
+            data = {}
+
+    project_id = data.get('projectId')
+    if not project_id:
+        return jsonify({"status": "error", "message": "חסר מזהה פרויקט (projectId)"}), 400
+
+    project_data = data.get('projectData')
+    project_name = data.get('projectName') or 'טיוטת עריכה'
+    original_video_path = data.get('originalVideoPath') or ''
+    original_video_name = data.get('originalVideoName') or (os.path.basename(original_video_path) if original_video_path else project_name)
+    duration = data.get('duration') or '00:00:00'
+    thumbnail = data.get('thumbnail')
+
+    # חילוץ תמונה מקדימה במידה וחסרה
+    if not thumbnail and original_video_path and os.path.exists(original_video_path):
+        thumb_name = f"draft_{project_id}.jpg"
+        thumbnail = obs_controller_instance.generate_thumbnail(original_video_path, thumb_name)
+
+    # שמירת נתוני הפרויקט לתיקיית drafts
+    draft_file_path = os.path.join(DRAFTS_DIR, f"{project_id}.json")
+    try:
+        with open(draft_file_path, 'w', encoding='utf-8') as f:
+            if isinstance(project_data, str):
+                f.write(project_data)
+            else:
+                json.dump(project_data, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        print(f"Error saving draft file: {e}")
+
+    # עדכון הלוג recordings_log.json
+    draft_record = {
+        "id": project_id,
+        "file_name": original_video_name,
+        "project_name": project_name,
+        "file_path": original_video_path,
+        "original_path": original_video_path,
+        "button_used": "עריכה בתהליך",
+        "date_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "last_edited": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": duration,
+        "thumbnail": thumbnail,
+        "status": "editing"
+    }
+    obs_controller_instance.save_draft(draft_record)
+
+    return jsonify({"status": "success", "draftId": project_id})
+
+@app.route('/api/drafts/<draft_id>', methods=['GET'])
+def get_draft(draft_id):
+    """מחזיר את נתוני הטיוטה עבור עורך הוידאו"""
+    draft_file_path = os.path.join(DRAFTS_DIR, f"{draft_id}.json")
+    if not os.path.exists(draft_file_path):
+        return jsonify({"status": "error", "message": "הטיוטה לא נמצאה"}), 404
+
+    try:
+        with open(draft_file_path, 'r', encoding='utf-8') as f:
+            project_obj = json.load(f)
+
+        recordings = obs_controller_instance.get_all_recordings()
+        draft_info = next((r for r in recordings if r.get('id') == draft_id), {})
+        orig_path = draft_info.get('original_path') or draft_info.get('file_path')
+
+        base_host = request.host_url.rstrip('/')
+        video_stream_url = f"{base_host}/api/video?path={urllib.parse.quote(orig_path)}" if orig_path and os.path.exists(orig_path) else None
+
+        return jsonify({
+            "status": "success",
+            "project": project_obj,
+            "original_path": orig_path,
+            "file_name": draft_info.get('file_name'),
+            "duration": draft_info.get('duration'),
+            "video_url": video_stream_url
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/export', methods=['POST', 'OPTIONS'])
+def handle_export():
+    """מקבל סרטון מיוצא מעורך הוידאו ושומר אותו ישירות בתיקיית exports ללא שאלות"""
+    if request.method == 'OPTIONS':
+        return '', 204
+
+    video_file = request.files.get('video')
+    if not video_file:
+        return jsonify({"status": "error", "message": "לא התקבל קובץ וידאו לייצוא"}), 400
+
+    filename = request.form.get('filename') or 'exported_clip.mp4'
+    safe_name = secure_filename(filename) or f"export_{int(time.time())}.mp4"
+    base, ext = os.path.splitext(safe_name)
+    if not ext:
+        ext = ".mp4"
+        safe_name += ext
+
+    target_path = os.path.join(EXPORTS_DIR, safe_name)
+    if os.path.exists(target_path):
+        time_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+        safe_name = f"{base}_{time_tag}{ext}"
+        target_path = os.path.join(EXPORTS_DIR, safe_name)
+
+    video_file.save(target_path)
+
+    # יצירת תמונה מקדימה
+    thumb_name = f"{os.path.splitext(safe_name)[0]}.jpg"
+    thumb_url = obs_controller_instance.generate_thumbnail(target_path, thumb_name)
+
+    duration = request.form.get('duration') or "00:00:00"
+    project_id = request.form.get('projectId')
+
+    export_record = {
+        "id": f"export-{int(time.time())}",
+        "file_name": safe_name,
+        "file_path": target_path,
+        "button_used": "ייצוא עורך",
+        "date_time": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "duration": duration,
+        "thumbnail": thumb_url,
+        "status": "ready"
+    }
+
+    obs_controller_instance.save_ready_export(export_record, draft_id_to_clear=project_id)
+
+    return jsonify({
+        "status": "success",
+        "message": "הסרטון יוצא בהצלחה ונשמר בתיקיית exports",
+        "file_name": safe_name,
+        "file_path": target_path,
+        "thumbnail": thumb_url
     })
 
 @app.route('/control', methods=['POST'])
