@@ -114,7 +114,7 @@ export default {
 
     // 5. API: הורדת אפליקציית הסטרימר
     if (url.pathname === "/api/download/streamer-client") {
-      return Response.redirect("https://github.com/Roi-Chocron/LiveEdits/raw/main/streamer_client.zip", 302);
+      return Response.redirect("https://github.com/Roi-Chocron/LiveEdits/releases/download/latest/LiveEdits_Streamer_Client.exe", 302);
     }
 
     // 6. API: התחברות
