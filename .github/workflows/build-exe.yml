@@ -1,0 +1,41 @@
+name: Build Streamer Client EXE
+
+on:
+  push:
+    branches: [ main, master ]
+    paths:
+      - 'streamer_client/**'
+  workflow_dispatch:
+
+jobs:
+  build-windows-exe:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install Dependencies & PyInstaller
+        run: |
+          python -m pip install --upgrade pip
+          pip install pyinstaller flask requests obsws-python
+
+      - name: Build Standalone EXE
+        run: |
+          cd streamer_client
+          pyinstaller --noconfirm --onedir --windowed --name "LiveEdits_Streamer_Client" --add-data "config.json;." stream_deck_gui.py
+
+      - name: Archive EXE Folder
+        run: |
+          cd streamer_client/dist
+          Compress-Archive -Path LiveEdits_Streamer_Client -DestinationPath ../LiveEdits_Streamer_Client_Windows.zip
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: LiveEdits_Streamer_Client_Windows
+          path: streamer_client/LiveEdits_Streamer_Client_Windows.zip
