@@ -1,0 +1,9 @@
+name = "liveedits"
+main = "src/index.js"
+compatibility_date = "2024-09-01"
+
+[observability]
+enabled = true
+
+[vars]
+BACKEND_ORIGIN = "http://localhost:4000"
