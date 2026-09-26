@@ -1,0 +1,10 @@
+{
+    "server_url": "http://127.0.0.1:5000",
+    "streamer_username": "streamer",
+    "streamer_password": "streamer123",
+    "obs_host": "127.0.0.1",
+    "obs_port": 4455,
+    "obs_password": "",
+    "agent_port": 5050,
+    "auto_upload_to_server": true
+}

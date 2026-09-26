@@ -1,8 +1,21 @@
 import socket
 import os
+import sys
 import time
 from datetime import datetime
 import json
+
+# ודא שנתיב הסביבה הווירטואלית (venv) קיים ב-sys.path
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_VENV_SITE_PACKAGES = [
+    os.path.join(_BASE_DIR, 'venv', 'lib', f'python{sys.version_info.major}.{sys.version_info.minor}', 'site-packages'),
+    os.path.join(_BASE_DIR, 'venv', 'lib', 'python3.13', 'site-packages'),
+]
+for _p in _VENV_SITE_PACKAGES:
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+
+import database
 
 # ננסה לייבא את OpenCV עבור התמונות המקדימות
 try:
@@ -182,57 +195,62 @@ class OBSManager:
         return None
 
     def save_recording_to_json(self, record_data):
-        """שומר את נתוני ההקלטה בקובץ ה-JSON"""
+        """שומר את נתוני ההקלטה במסד הנתונים SQLite וגם בקובץ JSON לגיבוי"""
+        try:
+            database.db_add_recording(record_data)
+        except Exception as e:
+            print(f"⚠️ Error saving to SQLite database: {e}")
+
         data_list = self.get_all_recordings()
-        data_list.append(record_data)
         with open(JSON_LOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(data_list, f, ensure_ascii=False, indent=4)
 
     def save_draft(self, draft_data):
-        """שומר או מעדכן קליפ בתהליך עריכה בקובץ ה-JSON"""
-        data_list = self.get_all_recordings()
-        draft_id = draft_data.get('id')
-        found = False
-        for i, item in enumerate(data_list):
-            if item.get('id') == draft_id:
-                data_list[i] = {**item, **draft_data, "status": "editing"}
-                found = True
-                break
-        if not found:
-            data_list.append({**draft_data, "status": "editing"})
+        """שומר או מעדכן קליפ בתהליך עריכה במסד הנתונים SQLite וב-JSON"""
+        try:
+            database.db_save_draft(draft_data)
+        except Exception as e:
+            print(f"⚠️ Error saving draft to SQLite: {e}")
 
+        data_list = self.get_all_recordings()
         with open(JSON_LOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(data_list, f, ensure_ascii=False, indent=4)
 
     def save_ready_export(self, export_data, draft_id_to_clear=None):
-        """שומר קליפ מוכן בקובץ ה-JSON ומנקה טיוטה אם קיימת"""
+        """שומר קליפ מוכן במסד הנתונים SQLite ומנקה טיוטה אם קיימת"""
+        try:
+            database.db_save_ready_export(export_data, draft_id_to_clear=draft_id_to_clear)
+        except Exception as e:
+            print(f"⚠️ Error saving export to SQLite: {e}")
+
         data_list = self.get_all_recordings()
-        
-        # אם יש טיוטה שקושרה לייצוא הזה, נמחק אותה או נעדכן אותה
-        if draft_id_to_clear:
-            data_list = [item for item in data_list if item.get('id') != draft_id_to_clear]
-            
-        data_list.append({**export_data, "status": "ready"})
-        
         with open(JSON_LOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(data_list, f, ensure_ascii=False, indent=4)
 
     def delete_draft_by_id(self, draft_id):
-        """מוחק טיוטת עריכה מקובץ ה-JSON"""
+        """מוחק טיוטת עריכה ממסד הנתונים SQLite ומקובץ ה-JSON"""
+        try:
+            database.db_delete_recording(draft_id)
+        except Exception as e:
+            print(f"⚠️ Error deleting recording from SQLite: {e}")
+
         data_list = self.get_all_recordings()
-        data_list = [item for item in data_list if item.get('id') != draft_id]
         with open(JSON_LOG_FILE, 'w', encoding='utf-8') as f:
             json.dump(data_list, f, ensure_ascii=False, indent=4)
 
     def get_all_recordings(self):
-        """שולף את כל ההקלטות מקובץ ה-JSON"""
-        if os.path.exists(JSON_LOG_FILE):
-            try:
-                with open(JSON_LOG_FILE, 'r', encoding='utf-8') as f:
-                    return json.load(f)
-            except Exception:
-                pass
-        return []
+        """שולף את כל ההקלטות ישירות ממסד הנתונים SQLite"""
+        try:
+            return database.db_get_all_recordings()
+        except Exception as e:
+            print(f"⚠️ Error reading from SQLite, falling back to JSON: {e}")
+            if os.path.exists(JSON_LOG_FILE):
+                try:
+                    with open(JSON_LOG_FILE, 'r', encoding='utf-8') as f:
+                        return json.load(f)
+                except Exception:
+                    pass
+            return []
 
 # יצירת מופע גלובלי של מנהל ה-OBS שנוכל לייבא בשרת
 obs_controller_instance = OBSManager()

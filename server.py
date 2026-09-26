@@ -1,5 +1,17 @@
-from flask import Flask, jsonify, send_from_directory, request, send_file
+from flask import Flask, jsonify, send_from_directory, request, send_file, redirect, make_response
 import os
+import sys
+
+# ודא שנתיב הסביבה הווירטואלית (venv) קיים ב-sys.path
+_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+_VENV_SITE_PACKAGES = [
+    os.path.join(_BASE_DIR, 'venv', 'lib', f'python{sys.version_info.major}.{sys.version_info.minor}', 'site-packages'),
+    os.path.join(_BASE_DIR, 'venv', 'lib', 'python3.13', 'site-packages'),
+]
+for _p in _VENV_SITE_PACKAGES:
+    if os.path.isdir(_p) and _p not in sys.path:
+        sys.path.insert(0, _p)
+
 import subprocess
 import shutil
 import time
@@ -9,8 +21,9 @@ import json
 from datetime import datetime
 from werkzeug.utils import secure_filename
 
-# מייבאים את מנהל ה-OBS מהקובץ החדש שיצרנו
+# מייבאים את מנהל ה-OBS ואת מסד הנתונים
 from obs_controller import obs_controller_instance
+import database
 
 app = Flask(__name__)
 
@@ -18,10 +31,12 @@ BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 THUMBNAILS_DIR = os.path.join(BASE_DIR, 'thumbnails')
 EXPORTS_DIR = os.path.join(BASE_DIR, 'exports')
 DRAFTS_DIR = os.path.join(BASE_DIR, 'drafts')
+UPLOADS_DIR = os.path.join(BASE_DIR, 'uploads')
 
 os.makedirs(THUMBNAILS_DIR, exist_ok=True)
 os.makedirs(EXPORTS_DIR, exist_ok=True)
 os.makedirs(DRAFTS_DIR, exist_ok=True)
+os.makedirs(UPLOADS_DIR, exist_ok=True)
 
 @app.after_request
 def add_cors_headers(response):
@@ -83,15 +98,82 @@ def start_openreel():
 
     return get_openreel_port()
 
+def get_current_user():
+    """בודק האם יש משתמש מחובר לפי session_token ב-Cookie או ב-Header"""
+    token = request.cookies.get('session_token') or request.headers.get('X-Session-Token')
+    if token:
+        return database.get_user_by_session(token)
+    return None
+
+@app.route('/login')
+def login_page():
+    """מגיש את דף ההתחברות למערכת"""
+    user = get_current_user()
+    if user:
+        return redirect('/home')
+    return send_from_directory(BASE_DIR, 'login.html')
+
+@app.route('/api/auth/login', methods=['POST'])
+def api_login():
+    """מבצע אימות משתמש ומחזיר Session Token ועוגייה"""
+    data = request.get_json() or {}
+    username = data.get('username', '').strip()
+    password = data.get('password', '').strip()
+
+    user = database.authenticate_user(username, password)
+    if not user:
+        return jsonify({"status": "error", "message": "שם משתמש או סיסמה שגויים"}), 401
+
+    token = database.create_session(user['id'])
+    resp = make_response(jsonify({
+        "status": "success",
+        "user": user,
+        "token": token
+    }))
+    # נגדיר Cookie לתקופה של 7 ימים
+    resp.set_cookie('session_token', token, max_age=7*24*3600, path='/', httponly=False)
+    return resp
+
+@app.route('/api/auth/logout', methods=['POST', 'GET'])
+def api_logout():
+    """מתנתק ומבטל את ה-Session"""
+    token = request.cookies.get('session_token') or request.headers.get('X-Session-Token')
+    if token:
+        database.destroy_session(token)
+    resp = make_response(redirect('/login'))
+    resp.delete_cookie('session_token', path='/')
+    return resp
+
+@app.route('/api/auth/me', methods=['GET'])
+def api_current_user():
+    """מחזיר את פרטי המשתמש המחובר כעת"""
+    user = get_current_user()
+    if user:
+        return jsonify({"status": "success", "user": user})
+    return jsonify({"status": "unauthenticated", "user": None}), 401
+
+@app.route('/api/users/editors', methods=['GET'])
+def get_editors():
+    """מחזיר רשימת עורכים מחוברים מתוך מסד הנתונים"""
+    editors = database.get_connected_editors()
+    return jsonify(editors)
+
 @app.route('/')
 @app.route('/deck')
 def stream_deck():
     """מגיש את ה-Stream Deck HTML"""
+    user = get_current_user()
+    if not user:
+        return redirect('/login?next=/deck')
+    # אם העורך מנסה לגשת ל-Stream Deck, נציג לו או נעביר ל-home
     return send_from_directory(BASE_DIR, 'stream deck.html')
 
 @app.route('/home')
 def home_dashboard():
     """מגיש את ממשק הדשבורד"""
+    user = get_current_user()
+    if not user:
+        return redirect('/login?next=/home')
     return send_from_directory(BASE_DIR, 'home.html')
 
 @app.route('/api/obs-template', methods=['GET'])
@@ -111,16 +193,109 @@ def download_obs_template():
 @app.route('/api/obs/setup-canvas', methods=['POST', 'GET'])
 def setup_obs_canvas():
     """מגדיר את רזולוציית OBS ישירות ל-4K גריד (3840x2160) דרך ה-WebSocket"""
+    user = get_current_user()
+    if user and user.get('role') != 'streamer':
+        return jsonify({"status": "error", "message": "הרשאה נדחתה: רק הסטרימר מורשה לשנות הגדרות OBS"}), 403
+
     success, msg = obs_controller_instance.configure_canvas(3840, 2160)
     if success:
         return jsonify({"status": "success", "message": msg})
     return jsonify({"status": "error", "message": msg}), 500
 
+@app.route('/control', methods=['POST'])
+def control_obs():
+    """מקבל פקודות מהדפדפן ומעביר ל-OBS Controller (רק לסטרימר)"""
+    user = get_current_user()
+    if user and user.get('role') != 'streamer':
+        return jsonify({"status": "error", "message": "הרשאה נדחתה: רק הסטרימר יכול לשלוט בהקלטות OBS"}), 403
+
+    data = request.get_json() or {}
+    action = data.get('action')
+    
+    try:
+        # התחלת הקלטה
+        if action in ['ריאקשן', 'דרמה', 'גיימינג', 'אחר', 'חפיפה']:
+            obs_controller_instance.start_recording(action)
+            return jsonify({"status": "success", "message": f"ההקלטה התחילה עבור: {action}"})
+            
+        # השהייה / המשך
+        elif action == 'השהיה/המשך':
+            obs_controller_instance.toggle_pause()
+            return jsonify({"status": "success", "message": "מצב ההקלטה עודכן"})
+            
+        # סיום הקלטה
+        elif action in ['סיום וחזרה', 'סיום בלבד']:
+            try:
+                # מקבל מה-Controller את הנתיב שבו נשמר הסרטון
+                file_path = obs_controller_instance.stop_recording()
+                return jsonify({"status": "success", "path": file_path})
+            except Exception:
+                return jsonify({"status": "success", "message": "ההקלטה כבר הייתה עצורה"})
+            
+        return jsonify({"status": "error", "message": "פעולה לא מוכרת"}), 400
+        
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
 @app.route('/api/recordings', methods=['GET'])
 def get_recordings():
-    """מחזיר את כל ההקלטות מהלוג"""
+    """מחזיר את כל ההקלטות מתוך מסד הנתונים SQLite"""
     recordings = obs_controller_instance.get_all_recordings()
     return jsonify(recordings)
+
+@app.route('/api/recordings/upload', methods=['POST', 'OPTIONS'])
+def upload_recording_from_streamer():
+    """מאפשר לאפליקציית הסטרימר להעלות קובץ הקלטה ומטא-דאטה לשרת המרכזי"""
+    if request.method == 'OPTIONS':
+        return '', 204
+
+    user = get_current_user()
+    streamer_id = user['id'] if user else None
+
+    video_file = request.files.get('video')
+    if not video_file:
+        return jsonify({"status": "error", "message": "לא התקבל קובץ וידאו"}), 400
+
+    filename = request.form.get('filename') or video_file.filename or 'recording.mp4'
+    safe_name = secure_filename(filename) or f"rec_{int(time.time())}.mp4"
+    target_path = os.path.join(UPLOADS_DIR, safe_name)
+    if os.path.exists(target_path):
+        time_tag = datetime.now().strftime("%Y%m%d_%H%M%S")
+        base, ext = os.path.splitext(safe_name)
+        safe_name = f"{base}_{time_tag}{ext}"
+        target_path = os.path.join(UPLOADS_DIR, safe_name)
+
+    video_file.save(target_path)
+
+    # יצירת תמונה מקדימה
+    thumb_name = f"{os.path.splitext(safe_name)[0]}.jpg"
+    thumb_url = obs_controller_instance.generate_thumbnail(target_path, thumb_name)
+
+    record_id = request.form.get('id') or f"remote-{int(time.time())}"
+    button_used = request.form.get('button_used') or 'סטרימר מרוחק'
+    duration = request.form.get('duration') or '00:00:00'
+    date_time = request.form.get('date_time') or datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
+    record_data = {
+        "id": record_id,
+        "file_name": safe_name,
+        "file_path": target_path,
+        "original_path": target_path,
+        "button_used": button_used,
+        "date_time": date_time,
+        "duration": duration,
+        "thumbnail": thumb_url,
+        "status": "pending",
+        "streamer_id": streamer_id
+    }
+
+    obs_controller_instance.save_recording_to_json(record_data)
+
+    return jsonify({
+        "status": "success",
+        "message": "ההקלטה נקלטה בהצלחה במסד הנתונים של השרת",
+        "record": record_data
+    })
 
 @app.route('/api/thumbnail/<filename>')
 def get_thumbnail(filename):
@@ -325,36 +500,7 @@ def handle_export():
         "thumbnail": thumb_url
     })
 
-@app.route('/control', methods=['POST'])
-def control_obs():
-    """מקבל פקודות מהדפדפן ומעביר ל-OBS Controller"""
-    data = request.get_json() or {}
-    action = data.get('action')
-    
-    try:
-        # התחלת הקלטה
-        if action in ['ריאקשן', 'דרמה', 'גיימינג', 'אחר', 'חפיפה']:
-            obs_controller_instance.start_recording(action)
-            return jsonify({"status": "success", "message": f"ההקלטה התחילה עבור: {action}"})
-            
-        # השהייה / המשך
-        elif action == 'השהיה/המשך':
-            obs_controller_instance.toggle_pause()
-            return jsonify({"status": "success", "message": "מצב ההקלטה עודכן"})
-            
-        # סיום הקלטה
-        elif action in ['סיום וחזרה', 'סיום בלבד']:
-            try:
-                # מקבל מה-Controller את הנתיב שבו נשמר הסרטון
-                file_path = obs_controller_instance.stop_recording()
-                return jsonify({"status": "success", "path": file_path})
-            except Exception:
-                return jsonify({"status": "success", "message": "ההקלטה כבר הייתה עצורה"})
-            
-        return jsonify({"status": "error", "message": "פעולה לא מוכרת"}), 400
-        
-    except Exception as e:
-        return jsonify({"status": "error", "message": str(e)}), 500
+
 
 if __name__ == '__main__':
     print("🚀 מפעיל את השרת בכתובת http://127.0.0.1:5000")

@@ -21,31 +21,37 @@
     <header class="w-full bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
         <!-- Right Side: User greeting & avatar -->
         <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-full bg-gray-300 border-2 border-gray-400 overflow-hidden shadow">
-                <img src="https://placehold.co/100x100/d1d5db/4b5563?text=" alt="תמונת פרופיל" class="w-full h-full object-cover">
+            <div id="userAvatarContainer" class="w-11 h-11 rounded-full bg-indigo-100 border-2 border-indigo-300 overflow-hidden shadow flex items-center justify-center text-indigo-700 font-bold text-lg">
+                <i class="fa-solid fa-user"></i>
             </div>
-            <span class="font-semibold text-lg text-gray-700">שלום עודד</span>
+            <div>
+                <div class="flex items-center gap-2">
+                    <span id="userDisplayName" class="font-bold text-lg text-gray-800">טוען משתמש...</span>
+                    <span id="userRoleBadge" class="text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+                </div>
+                <div id="userRoleDesc" class="text-xs text-gray-500">מחובר למערכת LiveEdits</div>
+            </div>
         </div>
 
         <!-- Left Side: Navigation Links & Actions -->
         <div class="flex items-center gap-3">
-            <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-cloud-arrow-down"></i>
-                <span class="hidden sm:inline">הורדת תבנית OBS</span>
-            </a>
-            <a href="/" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner">
-                <i class="fa-solid fa-gamepad ml-1"></i> מעבר ל-Stream Deck
+            <a id="streamDeckLink" href="/deck" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner flex items-center gap-1.5">
+                <i class="fa-solid fa-gamepad"></i> <span>Stream Deck</span>
             </a>
             <button onclick="loadRecordings()" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition shadow-inner cursor-pointer" title="רענן רשימה">
                 <i class="fa-solid fa-rotate text-lg"></i>
             </button>
+            <a href="/api/auth/logout" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer" title="התנתק מהמערכת">
+                <i class="fa-solid fa-right-from-bracket"></i>
+                <span class="hidden sm:inline">התנתק</span>
+            </a>
         </div>
     </header>
 
     <main class="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-10">
 
         <!-- Banner: 4K Grid Recording & OBS Template (Zero-Setup Experience) -->
-        <section class="bg-gradient-to-r from-indigo-50/80 via-white to-slate-50 border border-indigo-200/80 rounded-2xl p-6 shadow-sm">
+        <section id="obsSetupBanner" class="bg-gradient-to-r from-indigo-50/80 via-white to-slate-50 border border-indigo-200/80 rounded-2xl p-6 shadow-sm">
             <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-indigo-100 pb-4">
                 <div class="flex items-start gap-3.5">
                     <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0">
@@ -110,18 +116,14 @@
         <!-- Section 1: Connected Editors (עורכים מחוברים) -->
         <section class="flex flex-col gap-4">
             <div class="border-b-2 border-gray-800 pb-2 flex justify-between items-center">
-                <h2 class="text-2xl font-bold tracking-wide">עורכים מחוברים</h2>
+                <div class="flex items-center gap-3">
+                    <h2 class="text-2xl font-bold tracking-wide">עורכים במערכת</h2>
+                    <span id="editorsCountBadge" class="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                </div>
             </div>
             
-            <div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 pt-2">
-                <div class="flex flex-col items-center gap-2">
-                    <div class="w-16 h-16 rounded-full bg-gray-300 shadow-md border border-gray-400"></div>
-                    <span class="text-sm font-medium text-gray-600">דניאל</span>
-                </div>
-                <div class="flex flex-col items-center gap-2">
-                    <div class="w-16 h-16 rounded-full bg-gray-300 shadow-md border border-gray-400"></div>
-                    <span class="text-sm font-medium text-gray-600">אבני</span>
-                </div>
+            <div id="connectedEditorsContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 pt-2">
+                <div class="text-xs text-gray-400 py-2">טוען עורכים...</div>
             </div>
         </section>
 
@@ -226,6 +228,78 @@
         let currentVideoPath = null;
         let currentVideoName = null;
         let currentDraftId = null;
+        let currentUser = null;
+
+        async function initAuth() {
+            try {
+                const res = await fetch('/api/auth/me');
+                if (res.status === 401) {
+                    window.location.href = '/login?next=/home';
+                    return;
+                }
+                const data = await res.json();
+                currentUser = data.user;
+                if (currentUser) {
+                    const nameEl = document.getElementById('userDisplayName');
+                    const badgeEl = document.getElementById('userRoleBadge');
+                    const descEl = document.getElementById('userRoleDesc');
+                    const streamDeckBtn = document.getElementById('streamDeckLink');
+
+                    nameEl.textContent = currentUser.display_name || currentUser.username;
+                    const obsBanner = document.getElementById('obsSetupBanner');
+
+                    if (currentUser.role === 'streamer') {
+                        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200';
+                        badgeEl.textContent = 'סטרימר (OBS)';
+                        descEl.textContent = 'מחובר לשליטה בשידור והקלטות';
+                        if (streamDeckBtn) streamDeckBtn.classList.remove('hidden');
+                        if (obsBanner) obsBanner.classList.remove('hidden');
+                    } else {
+                        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200';
+                        badgeEl.textContent = 'עורך תוכן';
+                        descEl.textContent = 'מורשה לצפות, לערוך ולייצא קליפים';
+                        if (streamDeckBtn) streamDeckBtn.classList.add('hidden');
+                        if (obsBanner) obsBanner.classList.add('hidden');
+                    }
+                }
+            } catch (err) {
+                console.error("Auth check failed:", err);
+            }
+        }
+
+        async function loadEditors() {
+            const container = document.getElementById('connectedEditorsContainer');
+            const countBadge = document.getElementById('editorsCountBadge');
+            if (!container) return;
+
+            try {
+                const res = await fetch('/api/users/editors');
+                const editors = await res.json();
+                if (countBadge) countBadge.textContent = editors.length;
+
+                if (!editors || editors.length === 0) {
+                    container.innerHTML = '<div class="text-xs text-gray-400 py-2">אין עורכים רשומים במערכת.</div>';
+                    return;
+                }
+
+                container.innerHTML = '';
+                editors.forEach(ed => {
+                    const item = document.createElement('div');
+                    item.className = 'flex flex-col items-center gap-2 group';
+                    item.innerHTML = `
+                        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-md border-2 border-white flex items-center justify-center font-bold text-lg">
+                            ${ed.display_name.charAt(0)}
+                        </div>
+                        <span class="text-xs font-semibold text-gray-700 truncate max-w-[80px]" title="${ed.display_name}">
+                            ${ed.display_name.split(' ')[0]}
+                        </span>
+                    `;
+                    container.appendChild(item);
+                });
+            } catch (err) {
+                console.error("Failed to load editors:", err);
+            }
+        }
 
         async function loadRecordings() {
             const pendingContainer = document.getElementById('pendingClipsContainer');
@@ -546,8 +620,12 @@
             }
         }
 
-        // Load recordings on page open
-        window.onload = loadRecordings;
+        // Load auth, editors, and recordings on page open
+        window.onload = function() {
+            initAuth();
+            loadEditors();
+            loadRecordings();
+        };
     </script>
 </body>
 </html>
