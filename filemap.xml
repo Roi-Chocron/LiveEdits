@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<systemMap project="LiveEdits">
+  <!-- Streamer Agent (Local) -->
+  <file path="live-edits/streamer-agent/agent.js">
+    <function>initAgent() : Promise&lt;void&gt; processStatus</function>
+    <function>connectObs(Object config) : Promise&lt;OBSWebSocket&gt; connection</function>
+    <function>onRecordStateChanged(Object eventData) : void none</function>
+    <function>handleClipFinished(String filePath, String category, String quality) : Promise&lt;void&gt; status</function>
+    <function>triggerObsRecord(String action, Object metadata) : Promise&lt;boolean&gt; isSuccess</function>
+  </file>
+
+  <file path="live-edits/streamer-agent/compressor.js">
+    <function>compressVideo(String inputPath, String quality) : Promise&lt;String&gt; outputPath</function>
+    <function>getPresetConfig(String quality) : Object config</function>
+  </file>
+
+  <file path="live-edits/streamer-agent/uploader.js">
+    <function>uploadFile(String filePath, Object metadata) : Promise&lt;Object&gt; serverResponse</function>
+    <function>trackUploadProgress(Object progressEvent) : Number progressPercentage</function>
+  </file>
+
+  <file path="live-edits/streamer-agent/config.js">
+    <function>loadConfig() : Object envConfig</function>
+  </file>
+
+  <!-- Server (Cloud) -->
+  <file path="live-edits/server/server.js">
+    <function>startServer() : Promise&lt;void&gt; status</function>
+    <function>initSocketEvents(SocketIO.Server io) : void none</function>
+  </file>
+
+  <file path="live-edits/server/routes/upload.js">
+    <function>handleVideoUpload(Request req, Response res) : Promise&lt;void&gt; status</function>
+  </file>
+
+  <file path="live-edits/server/routes/youtube.js">
+    <function>publishToYouTube(Request req, Response res) : Promise&lt;void&gt; status</function>
+  </file>
+
+  <file path="live-edits/server/services/youtube-uploader.js">
+    <function>getOAuthClient() : OAuth2Client authClient</function>
+    <function>uploadToYouTube(Object uploadData) : Promise&lt;Object&gt; uploadResult</function>
+  </file>
+
+  <file path="live-edits/server/middleware/storage.js">
+    <function>configureMulter() : MulterInstance multerMiddleware</function>
+  </file>
+
+  <!-- Client (React App) -->
+  <file path="live-edits/client/src/services/socket.js">
+    <function>initSocket(String serverUrl) : Socket socketInstance</function>
+    <function>subscribeToClips(Function callback) : void none</function>
+    <function>sendDeckAction(String action, Object payload) : void none</function>
+  </file>
+
+  <file path="live-edits/client/src/pages/Deck.jsx">
+    <function>handleCategoryClick(String categoryId) : void none</function>
+    <function>handleQualityChange(String newQuality) : void none</function>
+    <function>updateRecordingTimer() : void none</function>
+  </file>
+
+  <file path="live-edits/client/src/pages/Editor.jsx">
+    <function>onNewClipReceived(Object clipData) : void none</function>
+    <function>addClipToTimeline(String clipId) : void none</function>
+    <function>handleExport(String resolutionPreset) : Promise&lt;Blob&gt; videoBlob</function>
+    <function>openYouTubeModal(Blob renderedVideoBlob) : void none</function>
+  </file>
+
+  <file path="live-edits/client/src/components/DeckButton.jsx">
+    <function>renderButton(Object category, Boolean isActive, Function onClick) : JSX.Element buttonElement</function>
+  </file>
+
+  <file path="live-edits/client/src/components/YouTubeModal.jsx">
+    <function>handleFormSubmit(Event event) : Promise&lt;void&gt; status</function>
+    <function>resetForm() : void none</function>
+  </file>
+</systemMap>

@@ -1,19 +1,8 @@
 import socket
 import os
-import sys
 import time
 from datetime import datetime
 import json
-
-# ודא שנתיב הסביבה הווירטואלית (venv) קיים ב-sys.path גם בהרצה מחוץ ל-venv
-_BASE_DIR = os.path.dirname(os.path.abspath(__file__))
-_VENV_SITE_PACKAGES = [
-    os.path.join(_BASE_DIR, 'venv', 'lib', f'python{sys.version_info.major}.{sys.version_info.minor}', 'site-packages'),
-    os.path.join(_BASE_DIR, 'venv', 'lib', 'python3.13', 'site-packages'),
-]
-for _p in _VENV_SITE_PACKAGES:
-    if os.path.isdir(_p) and _p not in sys.path:
-        sys.path.insert(0, _p)
 
 # ננסה לייבא את OpenCV עבור התמונות המקדימות
 try:
