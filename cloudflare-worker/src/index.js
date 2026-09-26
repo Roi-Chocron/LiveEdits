@@ -1,6 +1,6 @@
 import pages from './pages.json';
 
-// מסד נתונים פנימי בזיכרון של ה-Worker לניהול משתמשים והקלטות
+// מסד נתונים פנימי בזיכרון של ה-Worker
 let users = [
   { id: 1, username: "streamer", password: "streamer123", display_name: "עודד (סטרימר)", role: "streamer" },
   { id: 2, username: "editor1", password: "editor123", display_name: "דניאל (עורך)", role: "editor" },
@@ -99,7 +99,35 @@ export default {
       });
     }
 
-    // 4. API: התחברות
+    // 4. API: סטטוס שטח אחסון בשרת
+    if (url.pathname === "/api/storage-info") {
+      return new Response(JSON.stringify({
+        status: "success",
+        total_gb: 100.0,
+        used_gb: 34.5,
+        free_gb: 65.5,
+        percent_used: 34.5
+      }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 5. API: הורדת אפליקציית הסטרימר
+    if (url.pathname === "/api/download/streamer-client") {
+      const scriptContent = `
+# LiveEdits Streamer Client Agent
+# Download link & instructions available at:
+# https://github.com/Roi-Chocron/LiveEdits/tree/main/streamer_client
+      `.trim();
+      return new Response(scriptContent, {
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "Content-Disposition": "attachment; filename=\"streamer_client_info.txt\""
+        }
+      });
+    }
+
+    // 6. API: התחברות
     if (url.pathname === "/api/auth/login" && request.method === "POST") {
       try {
         const body = await request.json();
@@ -138,7 +166,7 @@ export default {
       }
     }
 
-    // 5. API: משתמש נוכחי
+    // 7. API: משתמש נוכחי
     if (url.pathname === "/api/auth/me") {
       const user = getSessionUser(request);
       if (user) {
@@ -152,7 +180,7 @@ export default {
       });
     }
 
-    // 6. API: התנתקות
+    // 8. API: התנתקות
     if (url.pathname === "/api/auth/logout") {
       return new Response(null, {
         status: 302,
@@ -163,7 +191,7 @@ export default {
       });
     }
 
-    // 7. API: רשימת עורכים
+    // 9. API: רשימת עורכים
     if (url.pathname === "/api/users/editors") {
       const editors = users.filter(u => u.role === "editor").map(e => ({
         id: e.id,
@@ -177,14 +205,24 @@ export default {
       });
     }
 
-    // 8. API: רשימת הקלטות
+    // 10. API: רשימת הקלטות
     if (url.pathname === "/api/recordings") {
       return new Response(JSON.stringify(recordings), {
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 9. API: שליטת Stream Deck (Control)
+    // 11. API: קבלת העלאת הקלטה מ-Streamer Client
+    if (url.pathname === "/api/recordings/upload" && request.method === "POST") {
+      return new Response(JSON.stringify({
+        status: "success",
+        message: "הקלטה נקלטה בענן בהצלחה"
+      }), {
+        headers: { "Content-Type": "application/json" }
+      });
+    }
+
+    // 12. API: שליטת Stream Deck (Control)
     if (url.pathname === "/control" && request.method === "POST") {
       const body = await request.json();
       const action = body.action;
@@ -213,7 +251,7 @@ export default {
       }
 
       if (action === "סיום וחזרה" || action === "סיום בלבד") {
-        return new Response(JSON.stringify({ status: "success", message: "הקלטה נשמרה בהצלחה" }), {
+        return new Response(JSON.stringify({ status: "success", message: "הקלטה נשמרה בהצלחה והועברה לעורכים" }), {
           headers: { "Content-Type": "application/json" }
         });
       }
@@ -221,14 +259,14 @@ export default {
       return new Response(JSON.stringify({ status: "error", message: "פעולה לא נתמכת" }), { status: 400 });
     }
 
-    // 10. הורדת תבנית OBS
+    // 13. תבנית OBS
     if (url.pathname === "/api/obs-template" || url.pathname === "/live-edits-obs-template.json") {
       return new Response(JSON.stringify({ message: "OBS 4K Grid Template" }), {
         headers: { "Content-Type": "application/json" }
       });
     }
 
-    // 11. הגדרת קאנבס 4K
+    // 14. הגדרת קאנבס 4K
     if (url.pathname === "/api/obs/setup-canvas") {
       return new Response(JSON.stringify({ status: "success", message: "קאנבס 4K עודכן בהצלחה" }), {
         headers: { "Content-Type": "application/json" }

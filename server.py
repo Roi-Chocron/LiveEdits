@@ -176,6 +176,44 @@ def home_dashboard():
         return redirect('/login?next=/home')
     return send_from_directory(BASE_DIR, 'home.html')
 
+@app.route('/api/storage-info', methods=['GET'])
+def get_storage_info():
+    """מחזיר מידע על ניצול שטח האחסון בשרת"""
+    try:
+        total, used, free = shutil.disk_usage(BASE_DIR)
+        total_gb = round(total / (1024 ** 3), 1)
+        used_gb = round(used / (1024 ** 3), 1)
+        free_gb = round(free / (1024 ** 3), 1)
+        percent_used = round((used / total) * 100, 1)
+        return jsonify({
+            "status": "success",
+            "total_gb": total_gb,
+            "used_gb": used_gb,
+            "free_gb": free_gb,
+            "percent_used": percent_used
+        })
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 500
+
+@app.route('/api/download/streamer-client', methods=['GET'])
+def download_streamer_client():
+    """מאפשר הורדת חבילת תוכנת הסטרימר (Client + Scripts) כקובץ ZIP מוכן"""
+    zip_path = os.path.join(BASE_DIR, 'streamer_client.zip')
+    if not os.path.exists(zip_path):
+        # אם הקובץ לא קיים, יוצרים אותו בזמן אמת
+        try:
+            client_dir = os.path.join(BASE_DIR, 'streamer_client')
+            shutil.make_archive(os.path.join(BASE_DIR, 'streamer_client'), 'zip', client_dir)
+        except Exception as e:
+            return jsonify({"status": "error", "message": f"שגיאה ביצירת קובץ ה-ZIP: {e}"}), 500
+
+    return send_file(
+        zip_path,
+        mimetype='application/zip',
+        as_attachment=True,
+        download_name='LiveEdits_Streamer_Client.zip'
+    )
+
 @app.route('/api/obs-template', methods=['GET'])
 @app.route('/live-edits-obs-template.json', methods=['GET'])
 def download_obs_template():

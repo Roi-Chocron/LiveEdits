@@ -33,12 +33,28 @@
             </div>
         </div>
 
+        <!-- Middle: Server Storage Bar -->
+        <div class="hidden md:flex flex-col items-center justify-center min-w-[220px] max-w-xs w-full px-4">
+            <div class="flex justify-between items-center w-full text-xs font-semibold mb-1">
+                <span class="text-gray-600 flex items-center gap-1">
+                    <i class="fa-solid fa-hard-drive text-indigo-500"></i> אחסון שרת
+                </span>
+                <span id="storageText" class="text-indigo-600 font-bold">טוען...</span>
+            </div>
+            <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
+                <div id="storageBar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            </div>
+        </div>
+
         <!-- Left Side: Navigation Links & Actions -->
         <div class="flex items-center gap-3">
+            <a href="/api/download/streamer-client" download="streamer_client.zip" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 shadow-sm" title="הורד תוכנת סטרימר למחשב">
+                <i class="fa-solid fa-download"></i> <span>הורדת תוכנת סטרימר</span>
+            </a>
             <a id="streamDeckLink" href="/deck" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner flex items-center gap-1.5">
                 <i class="fa-solid fa-gamepad"></i> <span>Stream Deck</span>
             </a>
-            <button onclick="loadRecordings()" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition shadow-inner cursor-pointer" title="רענן רשימה">
+            <button onclick="loadRecordings(); loadStorageInfo();" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition shadow-inner cursor-pointer" title="רענן רשימה">
                 <i class="fa-solid fa-rotate text-lg"></i>
             </button>
             <a href="/api/auth/logout" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer" title="התנתק מהמערכת">
@@ -67,13 +83,17 @@
                         </p>
                     </div>
                 </div>
-                <div class="flex items-center gap-3 shrink-0">
-                    <button onclick="setupOBSCanvas()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
+                <div class="flex items-center gap-3 shrink-0 flex-wrap">
+                    <a href="/api/download/streamer-client" download="streamer_client.zip" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
+                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                        <span>הורדת תוכנת הסטרימר (OBS Client)</span>
+                    </a>
+                    <button onclick="setupOBSCanvas()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
                         <i class="fa-solid fa-sliders"></i>
-                        <span>הגדרת קאנבס 4K ב-OBS בלחיצה אחת</span>
+                        <span>הגדרת קאנבס 4K בלחיצה</span>
                     </button>
                     <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-cloud-arrow-down"></i>
+                        <i class="fa-solid fa-file-arrow-down"></i>
                         <span>Download OBS Template</span>
                     </a>
                 </div>
@@ -620,11 +640,42 @@
             }
         }
 
+        async function loadStorageInfo() {
+            const bar = document.getElementById('storageBar');
+            const txt = document.getElementById('storageText');
+            if (!bar || !txt) return;
+
+            try {
+                const res = await fetch('/api/storage-info');
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const percent = data.percent_used || 0;
+                    bar.style.width = `${percent}%`;
+                    txt.textContent = `${data.free_gb} GB פנוי מתוך ${data.total_gb} GB (${percent}%)`;
+                    
+                    if (percent > 90) {
+                        bar.className = 'bg-rose-500 h-2.5 rounded-full transition-all duration-500';
+                        txt.className = 'text-rose-600 font-bold';
+                    } else if (percent > 75) {
+                        bar.className = 'bg-amber-500 h-2.5 rounded-full transition-all duration-500';
+                        txt.className = 'text-amber-600 font-bold';
+                    } else {
+                        bar.className = 'bg-indigo-600 h-2.5 rounded-full transition-all duration-500';
+                        txt.className = 'text-indigo-600 font-bold';
+                    }
+                }
+            } catch (err) {
+                console.warn('Could not load storage info:', err);
+                txt.textContent = 'מידע לא זמין';
+            }
+        }
+
         // Load auth, editors, and recordings on page open
         window.onload = function() {
             initAuth();
             loadEditors();
             loadRecordings();
+            loadStorageInfo();
         };
     </script>
 </body>
