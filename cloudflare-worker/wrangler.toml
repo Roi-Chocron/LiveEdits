@@ -2,3 +2,6 @@ name = "liveedits"
 main = "src/index.js"
 compatibility_date = "2024-09-01"
 
+[[kv_namespaces]]
+binding = "LIVEEDITS_KV"
+id = "5da725f6b86f459995f78091aa90ec01"

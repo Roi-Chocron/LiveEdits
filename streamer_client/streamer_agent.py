@@ -24,11 +24,11 @@ if os.path.isdir(_VENV_SITE) and _VENV_SITE not in sys.path:
     sys.path.insert(0, _VENV_SITE)
 
 try:
-    from flask import Flask, jsonify, request, render_template_string
+    from flask import Flask, jsonify, request, render_template_string, send_file, Response
 except ImportError:
     print("❌ חסרה ספריית Flask. מנסה להתקין או לטעון...")
     os.system(f"{sys.executable} -m pip install flask requests obsws-python")
-    from flask import Flask, jsonify, request, render_template_string
+    from flask import Flask, jsonify, request, render_template_string, send_file, Response
 
 import requests
 
@@ -156,32 +156,171 @@ class LocalOBSController:
 
         return rec_info
 
-# פונקציית העלאת ההקלטה לשרת
+def wait_for_file_complete(file_path, max_wait=20):
+    """
+    ממתין ש-OBS יסיים לכתוב ולסגור את קובץ ההקלטה בדיסק.
+    בודק שהקובץ קיים, גודלו גדול מ-0, ושהגודל התייצב לחלוטין.
+    """
+    start_time = time.time()
+    last_size = -1
+    stable_checks = 0
+    print(f"⏳ [Auto-Uploader] ממתין ש-OBS יסיים לכתוב את הקובץ {file_path}...")
+    while time.time() - start_time < max_wait:
+        if os.path.exists(file_path):
+            try:
+                curr_size = os.path.getsize(file_path)
+                if curr_size > 0:
+                    if curr_size == last_size:
+                        stable_checks += 1
+                        if stable_checks >= 2:
+                            return True, curr_size
+                    else:
+                        stable_checks = 0
+                        last_size = curr_size
+            except Exception:
+                pass
+        time.sleep(0.5)
+    if os.path.exists(file_path):
+        sz = os.path.getsize(file_path)
+        if sz > 0:
+            return True, sz
+    return False, 0
+
+# פונקציית העלאה ישירה ל-Google Drive במידה ומחובר, ורישום המטא-דאטה בשרת
+def upload_file_to_gdrive(file_path, file_name, access_token):
+    """
+    מעלה קובץ ישירות ל-Google Drive דרך Resumable Upload API
+    תומך בקבצי ענק ללא מגבלות גודל ובאופן אמין ויציב!
+    """
+    file_size = os.path.getsize(file_path)
+    if file_size <= 0:
+        raise Exception(f"גודל הקובץ הוא 0 בייט ({file_path}), לא ניתן להעלות")
+
+    print(f"📦 [Google Drive] מתחיל העלאת וידאו {file_name} ({file_size / (1024*1024):.1f} MB)...")
+
+    # 1. יצירת session להעלאה (Resumable Upload)
+    metadata = {
+        'name': file_name,
+        'mimeType': 'video/mp4'
+    }
+    init_headers = {
+        'Authorization': f'Bearer {access_token}',
+        'Content-Type': 'application/json; charset=UTF-8',
+        'X-Upload-Content-Type': 'video/mp4',
+        'X-Upload-Content-Length': str(file_size)
+    }
+    
+    init_res = requests.post(
+        'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+        headers=init_headers,
+        data=json.dumps(metadata),
+        timeout=30
+    )
+
+    if init_res.status_code != 200:
+        raise Exception(f"שגיאה ביצירת העלאה ל-Google Drive ({init_res.status_code}): {init_res.text}")
+
+    upload_url = init_res.headers.get('Location')
+    if not upload_url:
+        raise Exception("Google Drive לא החזיר כתובת Location להעלאה")
+
+    # 2. הזרמת הקובץ הבינארי ב-chunks של 8MB
+    upload_res = None
+    chunk_size = 8 * 1024 * 1024
+    with open(file_path, 'rb') as f:
+        offset = 0
+        while offset < file_size:
+            chunk = f.read(chunk_size)
+            chunk_len = len(chunk)
+            content_range = f"bytes {offset}-{offset + chunk_len - 1}/{file_size}"
+            
+            chunk_headers = {
+                'Content-Length': str(chunk_len),
+                'Content-Range': content_range
+            }
+
+            upload_res = requests.put(upload_url, headers=chunk_headers, data=chunk, timeout=300)
+            offset += chunk_len
+            percent = int((offset / file_size) * 100)
+            print(f"⏳ [Google Drive] קצב העלאה: {percent}% ({offset / (1024*1024):.1f}MB)")
+
+    if not upload_res or upload_res.status_code not in [200, 201]:
+        err_msg = upload_res.text if upload_res else "No response"
+        status_c = upload_res.status_code if upload_res else "None"
+        raise Exception(f"שגיאה בהשלמת העלאה ל-Google Drive ({status_c}): {err_msg}")
+
+    file_data = upload_res.json()
+    file_id = file_data.get('id')
+    print(f"🎉 [Google Drive] הסרטון הועלה בהצלחה! File ID: {file_id}")
+
+    # 3. הגדרת הרשאת קריאה ציבורית לקובץ כדי שהעורכים יוכלו לצפות בו מיד
+    try:
+        perm_url = f"https://www.googleapis.com/drive/v3/files/{file_id}/permissions"
+        perm_data = {'role': 'reader', 'type': 'anyone'}
+        requests.post(perm_url, headers={'Authorization': f'Bearer {access_token}', 'Content-Type': 'application/json'}, json=perm_data, timeout=15)
+    except Exception as e:
+        print(f"⚠️ [Google Drive] לא ניתן להגדיר הרשאת שיתוף ציבורית: {e}")
+
+    return {
+        "gdrive_id": file_id,
+        "gdrive_view_url": f"https://drive.google.com/file/d/{file_id}/preview",
+        "gdrive_download_url": f"https://drive.google.com/uc?export=download&id={file_id}",
+        "thumbnail": f"https://drive.google.com/thumbnail?id={file_id}&sz=w640"
+    }
+
+# פונקציית העלאת ההקלטה לשרת / Google Drive
 def upload_to_server_async(rec_info):
     server_url = config.get("server_url", "https://liveedits.roi-chocron7.workers.dev").rstrip('/')
     upload_endpoint = f"{server_url}/api/recordings/upload"
+    token_endpoint = f"{server_url}/api/gdrive/token"
     file_path = rec_info.get("file_path")
+    file_name = rec_info.get("file_name")
     
-    print(f"🚀 [Auto-Uploader] מעלה את ההקלטה {rec_info.get('file_name')} לשרת ({upload_endpoint})...")
-    
+    print(f"🚀 [Auto-Uploader] מעבד את ההקלטה {file_name}...")
+
+    # המתנה לסיום כתיבת הקובץ על ידי OBS
+    ready, file_size = wait_for_file_complete(file_path)
+    if not ready or file_size == 0:
+        print(f"⚠️ [Auto-Uploader] הקובץ {file_path} לא נמצא או ריק!")
+        return
+
+    gdrive_meta = {}
+    try:
+        # בדיקה האם יש טוקן פעיל של Google Drive בשרת
+        token_resp = requests.get(token_endpoint, timeout=10)
+        if token_resp.status_code == 200:
+            token_data = token_resp.json()
+            access_token = token_data.get("token")
+            if access_token:
+                print("☁️ [Auto-Uploader] נמצא חיבור ל-Google Drive, מעלה ישירות לענן...")
+                gdrive_meta = upload_file_to_gdrive(file_path, file_name, access_token)
+                print("✅ [Auto-Uploader] ההקלטה נשמרה ב-Google Drive!")
+    except Exception as gerr:
+        print(f"⚠️ [Auto-Uploader] העלאה ל-Google Drive נכשלה (ממשיך בשמירת מטא-דאטה): {gerr}")
+
+    # רישום המטא-דאטה של ההקלטה בשרת Cloudflare KV
     try:
         data = {
             "id": rec_info.get("id"),
-            "filename": rec_info.get("file_name"),
+            "filename": file_name,
+            "file_path": file_path,
+            "original_path": file_path,
             "button_used": rec_info.get("button_used"),
             "duration": rec_info.get("duration"),
-            "date_time": rec_info.get("date_time")
+            "date_time": rec_info.get("date_time"),
+            "gdrive_id": gdrive_meta.get("gdrive_id", ""),
+            "gdrive_view_url": gdrive_meta.get("gdrive_view_url", ""),
+            "gdrive_download_url": gdrive_meta.get("gdrive_download_url", ""),
+            "thumbnail": gdrive_meta.get("thumbnail", "")
         }
-        with open(file_path, 'rb') as f:
-            files = {'video': (rec_info.get("file_name"), f, 'video/mp4')}
-            response = requests.post(upload_endpoint, data=data, files=files, timeout=600)
-            
+        
+        response = requests.post(upload_endpoint, json=data, timeout=30)
         if response.status_code in [200, 201]:
-            print(f"✅ [Auto-Uploader] ההקלטה {rec_info.get('file_name')} הועלתה בהצלחה לשרת העורכים!")
+            print(f"✅ [Auto-Uploader] ההקלטה {file_name} סונכרנה בהצלחה לדשבורד העורכים!")
         else:
             print(f"⚠️ [Auto-Uploader] השרת החזיר תשובה {response.status_code}: {response.text}")
     except Exception as e:
-        print(f"❌ [Auto-Uploader] שגיאה בהעלאת ההקלטה לשרת: {e}")
+        print(f"❌ [Auto-Uploader] שגיאה בסנכרון ההקלטה לשרת: {e}")
 
 obs_ctrl = LocalOBSController(host=config["obs_host"], port=config["obs_port"])
 app = Flask(__name__)
@@ -342,7 +481,41 @@ def control():
     except Exception as e:
         return jsonify({"status": "error", "message": str(e)}), 500
 
+
+@app.after_request
+def add_cors_headers(response):
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, OPTIONS"
+    response.headers["Access-Control-Allow-Headers"] = "*"
+    return response
+
+@app.route("/api/video", methods=["GET", "OPTIONS"])
+def stream_video():
+    if request.method == "OPTIONS":
+        return "", 204
+    video_path = request.args.get("path")
+    if not video_path:
+        return "Missing video path", 400
+
+    candidates = [
+        video_path,
+        os.path.join(os.path.expanduser("~"), video_path),
+        os.path.join(os.path.expanduser("~"), "Videos", video_path),
+        os.path.join(os.path.expanduser("~"), "וידאו", video_path),
+        os.path.join(_BASE_DIR, video_path)
+    ]
+    target = None
+    for cand in candidates:
+        if os.path.isfile(cand):
+            target = cand
+            break
+
+    if target:
+        return send_file(target, mimetype="video/mp4", as_attachment=False)
+    return f"File not found: {video_path}", 404
+
 if __name__ == '__main__':
     port = config.get("agent_port", 5050)
     print(f"🎮 מפעיל את LiveEdits Streamer Client בכתובת http://127.0.0.1:{port}")
     app.run(host='0.0.0.0', port=port, debug=False)
+

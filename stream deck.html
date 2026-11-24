@@ -3,159 +3,206 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>עריכת סרטון</title>
+    <title>Stream Deck | LiveEdits</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Assistant', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                        'card': '0 2px 10px -2px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02)',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Assistant', sans-serif;
-            background-color: #f7f9fc;
+            background-color: #f8fafc; /* slate-50 */
+            -webkit-font-smoothing: antialiased;
         }
     </style>
 </head>
-<body class="min-p-0 m-0 text-gray-800">
+<body class="m-0 text-slate-800 flex flex-col min-h-screen">
 
-    <header class="w-full bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <!-- Right Side: User greeting & avatar -->
-        <div class="flex items-center gap-3">
-            <div class="w-11 h-11 rounded-full bg-indigo-100 border-2 border-indigo-300 overflow-hidden shadow flex items-center justify-center text-indigo-700 font-bold text-lg">
+    <header class="w-full bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 sticky top-0 z-40 shadow-sm flex flex-wrap lg:flex-nowrap justify-between items-center gap-4">
+        <!-- Right Side: User info -->
+        <div class="flex items-center gap-3.5">
+            <div class="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shadow-sm shrink-0">
                 <i class="fa-solid fa-broadcast-tower"></i>
             </div>
-            <div>
-                <span id="userDisplayName" class="font-bold text-lg text-gray-800">שלום עודד</span>
-                <span class="text-xs bg-indigo-100 text-indigo-800 font-bold px-2 py-0.5 rounded-full mr-1.5 border border-indigo-200">סטרימר</span>
+            <div class="flex flex-col">
+                <div class="flex items-center gap-2">
+                    <span id="userDisplayName" class="font-bold text-base text-slate-900 leading-none">טוען...</span>
+                    <span class="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide bg-indigo-100 text-indigo-700 border border-indigo-200/50">סטרימר</span>
+                </div>
+                <span class="text-xs text-slate-500 mt-1">ממשק שליטה והקלטות</span>
             </div>
         </div>
 
         <!-- Left Side: Navigation Links & Actions -->
-        <div class="flex items-center gap-3">
-            <button onclick="setupOBSCanvas()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2 cursor-pointer" title="מגדיר את רזולוציית OBS ל-4K">
-                <i class="fa-solid fa-sliders"></i>
-                <span>הגדרת OBS ל-4K</span>
+        <div class="flex items-center gap-2.5 flex-wrap justify-end">
+            <button onclick="setupOBSCanvas()" class="hidden sm:flex bg-slate-900 hover:bg-slate-800 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 items-center gap-2 shadow-sm" title="מגדיר את רזולוציית OBS ל-4K">
+                <i class="fa-solid fa-sliders text-slate-300"></i> <span>הגדרת OBS ל-4K</span>
             </button>
-            <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-3.5 py-2 rounded-lg text-sm font-semibold transition shadow flex items-center gap-2">
-                <i class="fa-solid fa-cloud-arrow-down"></i>
-                <span>הורדת תבנית OBS</span>
+            
+            <a href="/api/obs-template" download="live-edits-obs-template.json" class="hidden sm:flex bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 items-center gap-2 shadow-sm" title="הורדת תבנית">
+                <i class="fa-solid fa-file-code text-slate-400"></i> <span>תבנית OBS</span>
             </a>
-            <a href="/home" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner">
-                <i class="fa-solid fa-home ml-1"></i> מעבר ל-home
+            
+            <div class="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+
+            <a href="/home" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200/60 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-house"></i> <span>חזרה לראשי</span>
             </a>
-            <a href="/api/auth/logout" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer" title="התנתק מהמערכת">
+            
+            <a href="/api/auth/logout" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm cursor-pointer" title="התנתק">
                 <i class="fa-solid fa-right-from-bracket"></i>
-                <span class="hidden sm:inline">התנתק</span>
             </a>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-[75vh]">
+    <main class="max-w-5xl mx-auto w-full px-4 sm:px-6 py-10 flex flex-col items-center flex-1">
         
-        <!-- הודעת סטטוס -->
-        <div id="status-msg" class="mb-6 text-lg font-semibold text-blue-600 h-8"></div>
+        <!-- הודעת סטטוס (מחליף את ה-Alerts) -->
+        <div id="status-msg" class="w-full max-w-4xl mx-auto mb-8 flex items-center justify-center text-sm font-semibold rounded-xl p-3 bg-transparent text-transparent transition-all duration-300 empty:hidden"></div>
 
         <!-- Grid of 8 buttons -->
-        <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 w-full max-w-4xl">
-            <!-- Button 1: ריאקשן -->
-            <button onclick="handleAction('ריאקשן')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                ריאקשן
+        <div class="grid grid-cols-2 md:grid-cols-4 gap-4 w-full max-w-4xl mx-auto">
+            
+            <button onclick="handleAction('ריאקשן')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-face-grin-stars text-2xl text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-indigo-700 transition-colors">ריאקשן</span>
             </button>
 
-            <!-- Button 2: דרמה -->
-            <button onclick="handleAction('דרמה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                דרמה
+            <button onclick="handleAction('דרמה')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-masks-theater text-2xl text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-indigo-700 transition-colors">דרמה</span>
             </button>
 
-            <!-- Button 3: גיימינג -->
-            <button onclick="handleAction('גיימינג')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                גיימינג
+            <button onclick="handleAction('גיימינג')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-gamepad text-2xl text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-indigo-700 transition-colors">גיימינג</span>
             </button>
 
-            <!-- Button 4: אחר -->
-            <button onclick="handleAction('אחר')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                אחר
+            <button onclick="handleAction('אחר')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-indigo-50/50 border border-slate-200 hover:border-indigo-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-indigo-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-star text-2xl text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-indigo-700 transition-colors">אחר</span>
             </button>
 
-            <!-- Button 5: השהיה/המשך -->
-            <button onclick="handleAction('השהיה/המשך')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                השהיה/המשך
+            <button onclick="handleAction('השהיה/המשך')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-amber-50/50 border border-slate-200 hover:border-amber-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-amber-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-circle-pause text-2xl text-slate-400 group-hover:text-amber-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-amber-700 transition-colors">השהיה/המשך</span>
             </button>
 
-            <!-- Button 6: סיום וחזרה -->
-            <button onclick="handleAction('סיום וחזרה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                סיום וחזרה
+            <button onclick="handleAction('סיום וחזרה')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-rose-50/50 border border-slate-200 hover:border-rose-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-rose-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-rotate-left text-2xl text-slate-400 group-hover:text-rose-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-rose-700 transition-colors">סיום וחזרה</span>
             </button>
 
-            <!-- Button 7: סיום בלבד -->
-            <button onclick="handleAction('סיום בלבד')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                סיום בלבד
+            <button onclick="handleAction('סיום בלבד')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-rose-50/50 border border-slate-200 hover:border-rose-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-rose-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-stop text-2xl text-slate-400 group-hover:text-rose-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-rose-700 transition-colors">סיום בלבד</span>
             </button>
 
-            <!-- Button 8: חפיפה -->
-            <button onclick="handleAction('חפיפה')" class="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold rounded-xl shadow-md h-36 flex items-center justify-center border border-gray-300 transition hover:scale-105 cursor-pointer text-lg">
-                חפיפה
+            <button onclick="handleAction('חפיפה')" class="group relative flex flex-col items-center justify-center gap-3 bg-white hover:bg-emerald-50/50 border border-slate-200 hover:border-emerald-300 rounded-2xl h-36 md:h-40 shadow-sm hover:shadow-md hover:-translate-y-1 transition-all duration-200 cursor-pointer overflow-hidden">
+                <div class="w-12 h-12 rounded-full bg-slate-50 group-hover:bg-emerald-100 flex items-center justify-center transition-colors mb-1">
+                    <i class="fa-solid fa-layer-group text-2xl text-slate-400 group-hover:text-emerald-600 transition-colors"></i>
+                </div>
+                <span class="text-slate-700 font-bold text-lg group-hover:text-emerald-700 transition-colors">חפיפה</span>
             </button>
+
         </div>
 
         <!-- Setup Card: 4K Grid Recording & OBS Template -->
-        <div class="mt-12 w-full max-w-4xl bg-white border border-gray-200 rounded-2xl p-6 shadow-sm">
-            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-gray-100 pb-4">
-                <div>
-                    <h3 class="text-lg font-bold text-gray-800 flex items-center gap-2">
-                        <i class="fa-solid fa-border-all text-indigo-600"></i>
-                        הגדרת הקלטת 4K Grid (Zero-Setup Experience)
-                    </h3>
-                    <p class="text-xs text-gray-500 mt-1">
-                        הפרדת שכבות שידור (Game, Facecam, Alerts, Extra) מקובץ וידאו יחיד ברזולוציית 4K ללא עומס על המחשב
-                    </p>
+        <section class="mt-16 w-full max-w-4xl relative overflow-hidden bg-white border border-indigo-100 rounded-3xl p-6 md:p-8 shadow-card flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8 mx-auto">
+            <!-- Background Decoration -->
+            <div class="absolute top-0 left-0 -ml-16 -mt-16 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+            
+            <div class="relative flex gap-5 md:gap-6 items-start">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30 shrink-0">
+                    <i class="fa-solid fa-border-all"></i>
                 </div>
-                <a href="/api/obs-template" download="live-edits-obs-template.json" class="shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow-sm flex items-center gap-2 cursor-pointer">
-                    <i class="fa-solid fa-cloud-arrow-down"></i>
-                    Download OBS Template
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h2 class="text-xl font-bold text-slate-900 tracking-tight">4K Grid Recording <span class="text-indigo-600">Zero-Setup</span></h2>
+                    </div>
+                    <p class="text-sm text-slate-500 max-w-xl leading-relaxed">
+                        הפרדת שכבות שידור (Game, Facecam, Alerts, Extra) מקובץ וידאו יחיד ברזולוציית 4K ללא עומס על המחשב ובמינימום הגדרות.
+                    </p>
+                    
+                    <!-- Steps Inline -->
+                    <div class="flex items-center gap-4 mt-3 text-xs font-medium text-slate-600 flex-wrap">
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">1</div>ייבוא תבנית</div>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-300"></i>
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">2</div>מיפוי שכבות</div>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-300"></i>
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">3</div>הקלטה ב-4K</div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="relative flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full lg:w-auto">
+                <a href="/api/obs-template" download="live-edits-obs-template.json" class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2.5 cursor-pointer">
+                    <i class="fa-solid fa-file-code text-slate-400"></i>
+                    <span>הורד תבנית OBS</span>
                 </a>
             </div>
-
-            <!-- 3 Simple Steps -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center shrink-0">1</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">ייבוא התבנית</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>1. Import this JSON in OBS</strong> (בתפריט <em>Scene Collection &rarr; Import</em>).
-                        </p>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center shrink-0">2</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">מיפוי מקורות</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>2. Map your camera and game</strong> אל שכבות ה-Placeholders (Game, Facecam, Alerts, Extra).
-                        </p>
-                    </div>
-                </div>
-
-                <div class="bg-gray-50 rounded-xl p-4 border border-gray-200 flex items-start gap-3">
-                    <div class="w-8 h-8 rounded-full bg-indigo-100 text-indigo-700 font-bold text-sm flex items-center justify-center shrink-0">3</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">הקלטה מאוחדת</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>3. Start Recording in 4K</strong> (קובץ גריד יחיד ללא צורך בתוספים חיצוניים).
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        </section>
 
     </main>
 
     <script>
-        async function handleAction(actionName) {
+        function showStatus(message, type = 'info') {
             const statusDiv = document.getElementById('status-msg');
-            if (statusDiv) statusDiv.textContent = `מעבד פעולה: ${actionName}...`;
+            if (!statusDiv) return;
+            
+            // Base classes
+            let className = 'w-full max-w-4xl mx-auto mb-8 flex flex-wrap items-center justify-center gap-2 text-sm font-semibold rounded-xl p-3.5 transition-all shadow-sm ';
+            
+            if (type === 'processing') {
+                className += 'bg-indigo-50 border border-indigo-200 text-indigo-700';
+                statusDiv.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> <span>${message}</span>`;
+            } else if (type === 'success') {
+                className += 'bg-emerald-50 border border-emerald-200 text-emerald-700';
+                statusDiv.innerHTML = `<i class="fa-solid fa-circle-check"></i> <span>${message}</span>`;
+            } else if (type === 'error') {
+                className += 'bg-rose-50 border border-rose-200 text-rose-700';
+                statusDiv.innerHTML = `<i class="fa-solid fa-triangle-exclamation"></i> <span>${message}</span>`;
+            } else {
+                className += 'bg-slate-100 border border-slate-200 text-slate-700';
+                statusDiv.innerHTML = `<i class="fa-solid fa-circle-info"></i> <span>${message}</span>`;
+            }
+            
+            statusDiv.className = className;
+        }
+
+        async function handleAction(actionName) {
+            showStatus(`מעבד פעולה: ${actionName}...`, 'processing');
 
             try {
                 const response = await fetch('http://127.0.0.1:5000/control', {
@@ -168,38 +215,33 @@
                 const data = await response.json();
 
                 if (response.ok) {
-                    if (statusDiv) {
-                        if (data.path) {
-                            statusDiv.textContent = `✅ ההקלטה נשמרה ב: ${data.path}`;
-                        } else {
-                            statusDiv.textContent = `✅ ${data.message}`;
-                        }
+                    if (data.path) {
+                        showStatus(`ההקלטה נשמרה בהצלחה: <span class="font-mono text-[11px] px-2 py-1 bg-white/50 rounded-md border border-emerald-100 dir-ltr inline-block truncate max-w-md align-middle">${data.path}</span>`, 'success');
+                    } else {
+                        showStatus(data.message, 'success');
                     }
                 } else {
-                    if (statusDiv) statusDiv.textContent = `❌ שגיאה: ${data.message}`;
+                    showStatus(`שגיאה בביצוע הפעולה: ${data.message}`, 'error');
                 }
             } catch (err) {
-                if (statusDiv) statusDiv.textContent = `❌ שגיאת תקשורת מול השרת המקומי`;
                 console.error(err);
+                showStatus(`שגיאת תקשורת. ודא שתוכנת הסטרימר (LiveEdits.exe) פועלת ברקע.`, 'error');
             }
         }
 
         async function setupOBSCanvas() {
-            const statusDiv = document.getElementById('status-msg');
-            if (statusDiv) statusDiv.textContent = 'מגדיר רזולוציית 4K ב-OBS...';
+            showStatus('מגדיר רזולוציית 4K ב-OBS...', 'processing');
             try {
                 const res = await fetch('/api/obs/setup-canvas', { method: 'POST' });
                 const data = await res.json();
                 if (data.status === 'success') {
-                    if (statusDiv) statusDiv.textContent = '✅ ' + data.message;
-                    alert('✅ ' + data.message + ' (Base & Output 3840x2160)');
+                    showStatus(`${data.message} (Base & Output 3840x2160)`, 'success');
                 } else {
-                    if (statusDiv) statusDiv.textContent = '❌ ' + data.message;
-                    alert('❌ שגיאה: ' + data.message);
+                    showStatus(`שגיאה בהגדרת OBS: ${data.message}`, 'error');
                 }
             } catch (err) {
-                if (statusDiv) statusDiv.textContent = `❌ שגיאה: ` + err.message;
-                alert('❌ שגיאה בפנייה לשרת: ' + err.message);
+                console.error(err);
+                showStatus(`שגיאה בפנייה לשרת: ${err.message}`, 'error');
             }
         }
 
@@ -212,10 +254,14 @@
                 }
                 const data = await res.json();
                 if (data.user) {
-                    document.getElementById('userDisplayName').textContent = data.user.display_name || data.user.username;
+                    const nameEl = document.getElementById('userDisplayName');
+                    if (nameEl) nameEl.textContent = data.user.display_name || data.user.username;
+                    
                     if (data.user.role !== 'streamer') {
-                        alert('הודעת מערכת: עמוד Stream Deck מיועד לשליטת סטרימר בלבד.');
-                        window.location.href = '/home';
+                        showStatus('גישה נדחתה: עמוד Stream Deck מיועד לשליטת סטרימר בלבד. מעביר לעמוד הראשי...', 'error');
+                        setTimeout(() => {
+                            window.location.href = '/home';
+                        }, 2500);
                     }
                 }
             } catch (err) {

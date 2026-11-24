@@ -24,8 +24,10 @@ from werkzeug.utils import secure_filename
 # מייבאים את מנהל ה-OBS ואת מסד הנתונים
 from obs_controller import obs_controller_instance
 import database
+import youtube_service
 
 app = Flask(__name__)
+app.secret_key = "liveedits_youtube_oauth_secret_2026"
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 THUMBNAILS_DIR = os.path.join(BASE_DIR, 'thumbnails')
@@ -502,6 +504,151 @@ def handle_export():
 
 
 
+
+# ----------------- YouTube OAuth & Upload Endpoints -----------------
+
+@app.route('/api/youtube/status', methods=['GET'])
+def youtube_status():
+    """מחזיר סטטוס חיבור לחשבון YouTube ופרטי הערוץ המחובר"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"status": "error", "message": "משתמש לא מחובר"}), 401
+    
+    status_data = youtube_service.get_youtube_status()
+    return jsonify({
+        "status": "success",
+        "data": status_data
+    })
+
+@app.route('/api/youtube/config', methods=['POST'])
+def youtube_save_config():
+    """שומר הגדרות Client ID ו-Client Secret עבור Google OAuth"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"status": "error", "message": "משתמש לא מחובר"}), 401
+
+    data = request.get_json() or {}
+    client_id = data.get('client_id', '').strip()
+    client_secret = data.get('client_secret', '').strip()
+    raw_json = data.get('raw_json')
+
+    try:
+        if raw_json:
+            youtube_service.save_client_config(raw_json)
+        elif client_id and client_secret:
+            redirect_uri = "http://localhost:5090/api/youtube/oauth/callback"
+            config_dict = {
+                "web": {
+                    "client_id": client_id,
+                    "client_secret": client_secret,
+                    "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+                    "token_uri": "https://oauth2.googleapis.com/token",
+                    "redirect_uris": [redirect_uri, "http://127.0.0.1:5090/api/youtube/oauth/callback"]
+                }
+            }
+            youtube_service.save_client_config(config_dict)
+        else:
+            return jsonify({"status": "error", "message": "יש לספק Client ID ו-Client Secret או קובץ client_secrets.json"}), 400
+
+        return jsonify({"status": "success", "message": "הגדרות YouTube OAuth נשמרו בהצלחה"})
+    except Exception as e:
+        return jsonify({"status": "error", "message": str(e)}), 400
+
+@app.route('/api/youtube/oauth/login', methods=['GET'])
+def youtube_oauth_login():
+    """מתחיל תהליך OAuth מול Google ומפנה את המשתמש לדף ההרשאות"""
+    try:
+        redirect_uri = "http://localhost:5090/api/youtube/oauth/callback"
+        flow = youtube_service.create_oauth_flow(redirect_uri)
+        auth_url, state = flow.authorization_url(
+            access_type='offline',
+            include_granted_scopes='true',
+            prompt='consent'
+        )
+        resp = make_response(redirect(auth_url))
+        if getattr(flow, 'code_verifier', None):
+            resp.set_cookie('yt_code_verifier', flow.code_verifier, max_age=1800, path='/')
+        if state:
+            resp.set_cookie('yt_oauth_state', state, max_age=1800, path='/')
+        return resp
+    except Exception as e:
+        return f"<div dir='rtl' style='font-family:sans-serif;padding:30px;'><h2>שגיאה בהתחלת תהליך ההתחברות:</h2><p>{e}</p><br><a href='/home'>חזרה לדשבורד</a></div>", 400
+
+@app.route('/api/youtube/oauth/callback', methods=['GET'])
+def youtube_oauth_callback():
+    """קולט את קוד האימות מ-Google OAuth ושומר את הטוקנים"""
+    redirect_uri = "http://localhost:5090/api/youtube/oauth/callback"
+    error = request.args.get('error')
+    if error:
+        return redirect(f"/home?youtube_error={urllib.parse.quote(error)}")
+
+    try:
+        code_verifier = request.cookies.get('yt_code_verifier')
+        state = request.cookies.get('yt_oauth_state')
+        flow = youtube_service.create_oauth_flow(redirect_uri)
+        if state:
+            flow.state = state
+        flow.fetch_token(authorization_response=request.url, code_verifier=code_verifier)
+        creds = flow.credentials
+
+        channel_info = youtube_service.fetch_channel_info(creds)
+        youtube_service.save_credentials(creds, channel_info)
+
+        return redirect("/home?youtube_connected=true")
+    except Exception as e:
+        print(f"Error in YouTube OAuth callback: {e}")
+        return redirect(f"/home?youtube_error={urllib.parse.quote(str(e))}")
+
+@app.route('/api/youtube/disconnect', methods=['POST'])
+def youtube_disconnect():
+    """מנתק את החשבון המחובר של יוטיוב"""
+    youtube_service.disconnect_youtube()
+    return jsonify({"status": "success", "message": "החיבור ליוטיוב נותק בהצלחה"})
+
+@app.route('/api/youtube/upload', methods=['POST'])
+def youtube_upload():
+    """מעלה סרטון מתוך המערכת (מתיקיית exports או recordings) ישירות ליוטיוב"""
+    user = get_current_user()
+    if not user:
+        return jsonify({"status": "error", "message": "משתמש לא מחובר"}), 401
+
+    data = request.get_json() or {}
+    video_path = data.get('file_path')
+    title = data.get('title', '').strip()
+    description = data.get('description', '').strip()
+    privacy = data.get('privacy', 'private').strip()
+    tags = data.get('tags') or []
+
+    if isinstance(tags, str):
+        tags = [t.strip() for t in tags.split(',') if t.strip()]
+
+    if not video_path:
+        return jsonify({"status": "error", "message": "לא נבחר נתיב קובץ להעלאה"}), 400
+
+    if not os.path.exists(video_path):
+        return jsonify({"status": "error", "message": f"הקובץ לא קיים במערכת: {video_path}"}), 404
+
+    if not title:
+        title = os.path.basename(video_path)
+
+    try:
+        result = youtube_service.upload_video_to_youtube(
+            video_path=video_path,
+            title=title,
+            description=description,
+            privacy=privacy,
+            tags=tags
+        )
+        return jsonify({
+            "status": "success",
+            "message": "הסרטון הועלה ליוטיוב בהצלחה!",
+            "data": result
+        })
+    except PermissionError as pe:
+        return jsonify({"status": "error", "message": str(pe), "need_auth": True}), 403
+    except Exception as e:
+        return jsonify({"status": "error", "message": f"שגיאה בהעלאה ליוטיוב: {str(e)}"}), 500
+
 if __name__ == '__main__':
-    print("🚀 מפעיל את השרת בכתובת http://127.0.0.1:5000")
-    app.run(host='127.0.0.1', port=5000, debug=True)
+    print("🚀 מפעיל את השרת בכתובת http://127.0.0.1:5090")
+    app.run(host='127.0.0.1', port=5090, debug=True)

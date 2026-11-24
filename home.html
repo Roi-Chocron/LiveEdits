@@ -3,247 +3,423 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ממשק ניהול עורכים וקליפים</title>
+    <title>ממשק ניהול עורכים וקליפים | LiveEdits</title>
     <!-- Tailwind CSS CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;600;700&display=swap" rel="stylesheet">
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <!-- FontAwesome for Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Assistant', 'sans-serif'],
+                    },
+                    boxShadow: {
+                        'soft': '0 4px 20px -2px rgba(0, 0, 0, 0.05)',
+                        'card': '0 2px 10px -2px rgba(0, 0, 0, 0.04), 0 4px 6px -4px rgba(0, 0, 0, 0.02)',
+                    }
+                }
+            }
+        }
+    </script>
     <style>
         body {
             font-family: 'Assistant', sans-serif;
-            background-color: #f7f9fc;
+            background-color: #f8fafc; /* slate-50 */
+            -webkit-font-smoothing: antialiased;
         }
+        /* Hide scrollbar for clean horizontal scroll if needed */
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
-<body class="min-p-0 m-0 text-gray-800">
+<body class="m-0 text-slate-800 flex flex-col min-h-screen">
 
-    <header class="w-full bg-white border-b border-gray-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <!-- Right Side: User greeting & avatar -->
-        <div class="flex items-center gap-3">
-            <div id="userAvatarContainer" class="w-11 h-11 rounded-full bg-indigo-100 border-2 border-indigo-300 overflow-hidden shadow flex items-center justify-center text-indigo-700 font-bold text-lg">
+    <header class="w-full bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-3.5 sticky top-0 z-40 shadow-sm flex flex-wrap lg:flex-nowrap justify-between items-center gap-4">
+        <!-- Right Side: User info -->
+        <div class="flex items-center gap-3.5">
+            <div id="userAvatarContainer" class="w-10 h-10 rounded-full bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-lg shadow-sm shrink-0">
                 <i class="fa-solid fa-user"></i>
             </div>
-            <div>
+            <div class="flex flex-col">
                 <div class="flex items-center gap-2">
-                    <span id="userDisplayName" class="font-bold text-lg text-gray-800">טוען משתמש...</span>
-                    <span id="userRoleBadge" class="text-xs px-2.5 py-0.5 rounded-full font-bold"></span>
+                    <span id="userDisplayName" class="font-bold text-base text-slate-900 leading-none">טוען...</span>
+                    <span id="userRoleBadge" class="text-[10px] px-2 py-0.5 rounded-full font-bold tracking-wide"></span>
                 </div>
-                <div id="userRoleDesc" class="text-xs text-gray-500">מחובר למערכת LiveEdits</div>
+                <span id="userRoleDesc" class="text-xs text-slate-500 mt-1">מחובר למערכת LiveEdits</span>
             </div>
         </div>
 
         <!-- Middle: Server Storage Bar -->
-        <div class="hidden md:flex flex-col items-center justify-center min-w-[220px] max-w-xs w-full px-4">
-            <div class="flex justify-between items-center w-full text-xs font-semibold mb-1">
-                <span class="text-gray-600 flex items-center gap-1">
-                    <i class="fa-solid fa-hard-drive text-indigo-500"></i> אחסון שרת
+        <div class="hidden lg:flex flex-col flex-1 max-w-sm px-6">
+            <div class="flex justify-between items-end w-full text-xs mb-1.5">
+                <span class="text-slate-500 font-medium flex items-center gap-1.5">
+                    <i class="fa-solid fa-server text-slate-400"></i> אחסון שרת
                 </span>
-                <span id="storageText" class="text-indigo-600 font-bold">טוען...</span>
+                <span id="storageText" class="text-slate-700 font-semibold text-[11px]">טוען...</span>
             </div>
-            <div class="w-full bg-gray-200 rounded-full h-2.5 overflow-hidden">
-                <div id="storageBar" class="bg-indigo-600 h-2.5 rounded-full transition-all duration-500" style="width: 0%"></div>
+            <div class="w-full bg-slate-100 rounded-full h-2 overflow-hidden border border-slate-200/50">
+                <div id="storageBar" class="bg-indigo-500 h-full rounded-full transition-all duration-700 ease-out" style="width: 0%"></div>
             </div>
         </div>
 
-        <!-- Left Side: Navigation Links & Actions -->
-        <div class="flex items-center gap-3">
-            <a href="/api/download/streamer-client" download="LiveEdits_Streamer_Client.exe" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-700 border border-indigo-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 shadow-sm" title="הורד תוכנת סטרימר למחשב">
-                <i class="fa-solid fa-download"></i> <span>הורדת תוכנת הסטרימר (EXE)</span>
-            </a>
-            <a id="streamDeckLink" href="/deck" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg text-sm font-semibold transition shadow-inner flex items-center gap-1.5">
-                <i class="fa-solid fa-gamepad"></i> <span>Stream Deck</span>
-            </a>
-            <button onclick="loadRecordings(); loadStorageInfo();" class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-600 hover:bg-gray-200 transition shadow-inner cursor-pointer" title="רענן רשימה">
-                <i class="fa-solid fa-rotate text-lg"></i>
+        <!-- Left Side: Actions -->
+        <div class="flex items-center gap-2.5 flex-wrap justify-end">
+            <button id="gdriveHeaderBtn" onclick="toggleGDriveAuth()" class="group bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm cursor-pointer">
+                <i class="fa-brands fa-google-drive text-lg text-slate-400 group-hover:text-indigo-600 transition-colors"></i>
+                <span id="gdriveHeaderBtnText">Google Drive</span>
+                <span id="gdriveStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
             </button>
-            <a href="/api/auth/logout" class="bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 px-3.5 py-2 rounded-lg text-sm font-semibold transition flex items-center gap-1.5 cursor-pointer" title="התנתק מהמערכת">
+
+            <button id="youtubeHeaderBtn" onclick="openYouTubeSettingsModal()" class="group bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-3.5 py-2 rounded-xl text-sm font-semibold transition-all duration-200 flex items-center gap-2 shadow-sm cursor-pointer">
+                <i class="fa-brands fa-youtube text-lg text-slate-400 group-hover:text-red-500 transition-colors"></i>
+                <span id="youtubeHeaderBtnText">יוטיוב</span>
+                <span id="youtubeStatusDot" class="w-2 h-2 rounded-full bg-slate-300"></span>
+            </button>
+            
+            <a href="/api/download/streamer-client" download="LiveEdits_Streamer_Client.exe" class="hidden sm:flex bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 items-center gap-2 shadow-sm shadow-indigo-600/20" title="הורד תוכנת סטרימר למחשב">
+                <i class="fa-solid fa-download"></i> <span>סטרימר (EXE)</span>
+            </a>
+            
+            <a id="streamDeckLink" href="/deck" class="hidden sm:flex bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-4 py-2 rounded-xl text-sm font-semibold transition-all duration-200 items-center gap-2 shadow-sm">
+                <i class="fa-solid fa-gamepad text-indigo-500"></i> <span>Stream Deck</span>
+            </a>
+            
+            <div class="w-px h-6 bg-slate-200 mx-1 hidden md:block"></div>
+            
+            <button onclick="loadRecordings(); loadStorageInfo();" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-indigo-600 hover:bg-indigo-50 hover:border-indigo-200 transition-all shadow-sm cursor-pointer" title="רענן רשימה">
+                <i class="fa-solid fa-rotate-right"></i>
+            </button>
+            
+            <a href="/api/auth/logout" class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-500 hover:text-rose-600 hover:bg-rose-50 hover:border-rose-200 transition-all shadow-sm cursor-pointer" title="התנתק">
                 <i class="fa-solid fa-right-from-bracket"></i>
-                <span class="hidden sm:inline">התנתק</span>
             </a>
         </div>
     </header>
 
-    <main class="max-w-7xl mx-auto px-6 py-8 flex flex-col gap-10">
+    <main class="max-w-[1400px] mx-auto w-full px-4 sm:px-6 py-8 flex flex-col gap-12 flex-1">
 
-        <!-- Banner: 4K Grid Recording & OBS Template (Zero-Setup Experience) -->
-        <section id="obsSetupBanner" class="bg-gradient-to-r from-indigo-50/80 via-white to-slate-50 border border-indigo-200/80 rounded-2xl p-6 shadow-sm">
-            <div class="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-indigo-100 pb-4">
-                <div class="flex items-start gap-3.5">
-                    <div class="w-12 h-12 rounded-xl bg-indigo-600 text-white flex items-center justify-center text-xl shadow-md shrink-0">
-                        <i class="fa-solid fa-border-all"></i>
-                    </div>
-                    <div>
-                        <div class="flex items-center gap-2">
-                            <h2 class="text-xl font-bold text-gray-900">הגדרת הקלטת 4K Grid (Zero-Setup OBS)</h2>
-                            <span class="bg-indigo-100 text-indigo-800 text-xs px-2.5 py-0.5 rounded-full font-bold">חדש</span>
-                        </div>
-                        <p class="text-xs text-gray-600 mt-1 max-w-2xl">
-                            הפרדת שכבות שידור (Game, Facecam, Alerts, Extra) מקובץ וידאו יחיד ברזולוציית 4K ללא עומס על המחשב.
-                        </p>
-                    </div>
+        <!-- Banner: 4K Grid Recording -->
+        <section id="obsSetupBanner" class="relative overflow-hidden bg-white border border-indigo-100 rounded-3xl p-6 md:p-8 shadow-card flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+            <!-- Background Decoration -->
+            <div class="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-50 rounded-full blur-3xl opacity-60 pointer-events-none"></div>
+            
+            <div class="relative flex gap-5 md:gap-6 items-start">
+                <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-violet-600 text-white flex items-center justify-center text-2xl shadow-lg shadow-indigo-500/30 shrink-0">
+                    <i class="fa-solid fa-border-all"></i>
                 </div>
-                <div class="flex items-center gap-3 shrink-0 flex-wrap">
-                    <a href="/api/download/streamer-client" download="LiveEdits_Streamer_Client.exe" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-cloud-arrow-down"></i>
-                        <span>הורדת תוכנת הסטרימר (LiveEdits.exe)</span>
-                    </a>
-                    <button onclick="setupOBSCanvas()" class="bg-gray-800 hover:bg-gray-900 text-white px-4 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-sliders"></i>
-                        <span>הגדרת קאנבס 4K בלחיצה</span>
-                    </button>
-                    <a href="/api/obs-template" download="live-edits-obs-template.json" class="bg-indigo-600 hover:bg-indigo-700 text-white px-5 py-2.5 rounded-xl text-sm font-bold transition shadow flex items-center gap-2 cursor-pointer">
-                        <i class="fa-solid fa-file-arrow-down"></i>
-                        <span>Download OBS Template</span>
-                    </a>
-                </div>
-            </div>
-
-            <!-- 3 Simple Steps -->
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-5">
-                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">1</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">ייבוא התבנית</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>1. Import this JSON in OBS</strong> (בתפריט <em>Scene Collection &rarr; Import</em>).
-                        </p>
+                <div class="flex flex-col gap-1.5">
+                    <div class="flex items-center gap-3 flex-wrap">
+                        <h2 class="text-xl md:text-2xl font-bold text-slate-900 tracking-tight">4K Grid Recording <span class="text-indigo-600">Zero-Setup</span></h2>
+                        <span class="bg-indigo-100 text-indigo-700 border border-indigo-200/60 text-[10px] uppercase tracking-wider px-2.5 py-0.5 rounded-full font-bold">חדש</span>
                     </div>
-                </div>
-
-                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">2</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">מיפוי שכבות</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>2. Map your camera and game</strong> לשכבות Game, Facecam, Alerts ו-Extra.
-                        </p>
+                    <p class="text-sm text-slate-500 max-w-2xl leading-relaxed">
+                        הפרדת שכבות שידור (Game, Facecam, Alerts, Extra) מקובץ וידאו יחיד ברזולוציית 4K ללא עומס על המחשב ובמינימום הגדרות.
+                    </p>
+                    
+                    <!-- Steps Inline -->
+                    <div class="flex items-center gap-4 mt-3 text-xs font-medium text-slate-600 flex-wrap">
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">1</div>ייבוא תבנית</div>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-300"></i>
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-[10px] text-slate-500">2</div>מיפוי שכבות</div>
+                        <i class="fa-solid fa-chevron-left text-[10px] text-slate-300"></i>
+                        <div class="flex items-center gap-2"><div class="w-5 h-5 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px]">3</div>הקלטה מאוחדת</div>
                     </div>
-                </div>
-
-                <div class="bg-white/80 rounded-xl p-4 border border-indigo-100/90 flex items-start gap-3 shadow-xs">
-                    <div class="w-8 h-8 rounded-full bg-indigo-600 text-white font-bold text-sm flex items-center justify-center shrink-0">3</div>
-                    <div>
-                        <h4 class="text-sm font-bold text-gray-800">הקלטה מאוחדת</h4>
-                        <p class="text-xs text-gray-600 mt-1 leading-relaxed">
-                            <strong>3. Start Recording in 4K</strong> (קובץ גריד יחיד ללא תוספים חיצוניים).
-                        </p>
-                    </div>
-                </div>
-            </div>
-        </section>
-
-        <!-- Section 1: Connected Editors (עורכים מחוברים) -->
-        <section class="flex flex-col gap-4">
-            <div class="border-b-2 border-gray-800 pb-2 flex justify-between items-center">
-                <div class="flex items-center gap-3">
-                    <h2 class="text-2xl font-bold tracking-wide">עורכים במערכת</h2>
-                    <span id="editorsCountBadge" class="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
                 </div>
             </div>
             
-            <div id="connectedEditorsContainer" class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8 gap-6 pt-2">
-                <div class="text-xs text-gray-400 py-2">טוען עורכים...</div>
+            <div class="relative flex flex-col sm:flex-row items-center gap-3 shrink-0 w-full lg:w-auto">
+                <button onclick="setupOBSCanvas()" class="w-full sm:w-auto bg-slate-900 hover:bg-slate-800 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-md flex items-center justify-center gap-2.5 cursor-pointer">
+                    <i class="fa-solid fa-sliders text-slate-300"></i>
+                    <span>הגדר קאנבס אוטומטית</span>
+                </button>
+                <a href="/api/obs-template" download="live-edits-obs-template.json" class="w-full sm:w-auto bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm flex items-center justify-center gap-2.5 cursor-pointer">
+                    <i class="fa-solid fa-file-code text-slate-400"></i>
+                    <span>הורד תבנית OBS</span>
+                </a>
             </div>
         </section>
 
-        <!-- Section 2: Pending Clips (קליפים בהמתנה - הקלטות OBS חדשות) -->
-        <section class="flex flex-col gap-4">
-            <div class="border-b-2 border-gray-800 pb-2 flex justify-between items-center">
+        <!-- Section 1: Connected Editors -->
+        <section class="flex flex-col gap-5">
+            <div class="flex items-center justify-between pb-2">
                 <div class="flex items-center gap-3">
-                    <h2 class="text-2xl font-bold tracking-wide">קליפים בהמתנה (הקלטות OBS)</h2>
-                    <span id="pendingBadge" class="bg-gray-200 text-gray-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                    <h2 class="text-xl font-bold text-slate-800 tracking-tight">עורכים במערכת</h2>
+                    <span id="editorsCountBadge" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
                 </div>
             </div>
-
-            <div id="pendingClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <!-- Dynamically populated from backend recordings -->
-                <div class="text-gray-500 text-sm py-4">טוען הקלטות...</div>
+            <div id="connectedEditorsContainer" class="flex flex-wrap gap-4 pt-1">
+                <div class="text-sm text-slate-400">טוען עורכים...</div>
             </div>
         </section>
 
-        <!-- Section 3: In-Progress Clips (קליפים בתהליך עריכה) -->
-        <section class="flex flex-col gap-4">
-            <div class="border-b-2 border-amber-600 pb-2 flex justify-between items-center">
+        <!-- Section 2: Pending Clips -->
+        <section class="flex flex-col gap-5">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-200">
                 <div class="flex items-center gap-3">
-                    <h2 class="text-2xl font-bold tracking-wide text-amber-900 flex items-center gap-2">
-                        <i class="fa-solid fa-scissors text-amber-600"></i> קליפים בתהליך עריכה
+                    <h2 class="text-xl font-bold text-slate-800 tracking-tight">הקלטות ממתינות לעריכה</h2>
+                    <span id="pendingBadge" class="bg-slate-200 text-slate-700 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
+                </div>
+            </div>
+            <div id="pendingClipsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-1">
+                <div class="text-slate-500 text-sm py-4 col-span-full">טוען הקלטות...</div>
+            </div>
+        </section>
+
+        <!-- Section 3: In-Progress Clips -->
+        <section class="flex flex-col gap-5">
+            <div class="flex items-center justify-between pb-2 border-b border-amber-200">
+                <div class="flex items-center gap-3">
+                    <h2 class="text-xl font-bold text-amber-700 tracking-tight flex items-center gap-2.5">
+                        <i class="fa-solid fa-scissors"></i> בתהליך עריכה
                     </h2>
-                    <span id="editingBadge" class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold border border-amber-300">0</span>
+                    <span id="editingBadge" class="bg-amber-100 text-amber-800 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
                 </div>
-                <span class="text-xs text-amber-700 font-medium hidden sm:inline">פרויקטים שנשמרו אוטומטית בעת יציאה או התנתקות</span>
+                <span class="text-xs text-slate-400 font-medium hidden sm:block">נשמר אוטומטית</span>
             </div>
-
-            <div id="editingClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <!-- Dynamically populated from backend drafts -->
-                <div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע קליפים בתהליך עריכה.</div>
+            <div id="editingClipsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-1">
+                <div class="text-slate-400 text-sm py-4 col-span-full">אין כרגע קליפים בתהליך עריכה.</div>
             </div>
         </section>
 
-        <!-- Section 4: Ready Clips (קליפים מוכנים) -->
-        <section class="flex flex-col gap-4">
-            <div class="border-b-2 border-emerald-600 pb-2 flex justify-between items-center">
+        <!-- Section 4: Ready Clips -->
+        <section class="flex flex-col gap-5 pb-12">
+            <div class="flex items-center justify-between pb-2 border-b border-emerald-200">
                 <div class="flex items-center gap-3">
-                    <h2 class="text-2xl font-bold tracking-wide text-emerald-900 flex items-center gap-2">
-                        <i class="fa-solid fa-circle-check text-emerald-600"></i> קליפים מוכנים (ייצוא מעורך)
+                    <h2 class="text-xl font-bold text-emerald-700 tracking-tight flex items-center gap-2.5">
+                        <i class="fa-solid fa-circle-check"></i> מוכנים לייצוא
                     </h2>
-                    <span id="readyBadge" class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold border border-emerald-300">0</span>
+                    <span id="readyBadge" class="bg-emerald-100 text-emerald-800 text-xs px-2.5 py-0.5 rounded-full font-bold">0</span>
                 </div>
-                <span class="text-xs text-emerald-700 font-medium hidden sm:inline">נשמרים ישירות בתיקיית exports</span>
+                <span class="text-xs text-slate-400 font-medium hidden sm:block">נשמרים בתיקיית exports</span>
             </div>
-
-            <div id="readyClipsContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6 pt-2">
-                <!-- Dynamically populated from backend exports -->
-                <div class="text-gray-400 text-sm py-4 col-span-3">אין עדיין קליפים שיוצאו. לחץ על Export בעורך הוידאו!</div>
+            <div id="readyClipsContainer" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 pt-1">
+                <div class="text-slate-400 text-sm py-4 col-span-full">אין עדיין קליפים שיוצאו.</div>
             </div>
         </section>
 
     </main>
 
     <!-- Video Modal Popup -->
-    <div id="videoModal" class="fixed inset-0 bg-black bg-opacity-50 hidden items-center justify-center z-50 p-4 overflow-y-auto">
-        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl p-6 relative flex flex-col gap-6 my-16">
-            <!-- Close Button -->
-            <button onclick="closeVideoModal()" class="absolute -top-12 left-0 md:left-auto md:-left-12 w-10 h-10 rounded-full bg-white bg-opacity-90 hover:bg-white flex items-center justify-center text-gray-800 text-2xl font-bold transition shadow-lg cursor-pointer">
-                <i class="fa-solid fa-xmark"></i>
-            </button>
+    <div id="videoModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 sm:p-6 overflow-y-auto">
+        <div class="bg-white w-full max-w-4xl rounded-3xl shadow-2xl relative flex flex-col overflow-hidden my-auto border border-slate-100">
             
-            <!-- Video Player Box with Real HTML5 Video -->
-            <div class="w-full h-80 bg-black rounded-xl overflow-hidden border border-gray-300 flex items-center justify-center relative shadow-inner mt-2">
-                <video id="modalVideoPlayer" controls class="w-full h-full object-contain">
-                    הדפדפן שלך אינו תומך בניגון וידאו.
-                </video>
+            <!-- Header -->
+            <div class="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-slate-600 shadow-sm">
+                        <i class="fa-solid fa-film"></i>
+                    </div>
+                    <div>
+                        <h3 id="modalTitle" class="text-lg font-bold text-slate-900 line-clamp-1">שם הסרטון</h3>
+                        <div class="flex items-center gap-2 mt-0.5">
+                            <span id="modalStatusBadge" class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-200 text-slate-600">סטטוס</span>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="closeVideoModal()" class="w-9 h-9 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark text-lg"></i>
+                </button>
             </div>
 
-            <!-- Details Section -->
-            <!-- Details Section -->
-            <div class="flex flex-col md:flex-row justify-between gap-6 items-start">
-                <div class="flex flex-col gap-3 w-full md:w-auto md:min-w-[170px] order-2 md:order-1">
-                    <button id="editVideoBtn" onclick="editVideo()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-4 rounded-lg border border-amber-600 shadow-sm transition flex items-center justify-center cursor-pointer">
-                        <i class="fa-solid fa-scissors ml-2"></i> עריכת הסרטון
-                    </button>
-                    <a id="modalDownloadBtn" href="#" download class="w-full bg-gray-100 hover:bg-gray-200 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-300 shadow-sm transition flex items-center justify-center text-center cursor-pointer">
-                        <i class="fa-solid fa-download ml-2 text-gray-600"></i> הורדת קובץ
-                    </a>
-                    <button onclick="publishVideo()" class="w-full bg-white hover:bg-gray-50 text-gray-800 font-semibold py-2.5 px-4 rounded-lg border border-gray-800 shadow-sm transition cursor-pointer">
-                        פרסום הסרטון
-                    </button>
-                </div>
-
-                <div class="flex flex-col gap-2 text-right flex-1 order-1 md:order-2 w-full overflow-hidden">
-                    <div class="flex items-center gap-2">
-                        <h3 id="modalTitle" class="text-xl font-bold text-gray-800 truncate">שם הסרטון</h3>
-                        <span id="modalStatusBadge" class="text-xs font-semibold px-2 py-0.5 rounded"></span>
+            <!-- Video Player -->
+            <div class="w-full aspect-video bg-black relative flex items-center justify-center group">
+                <video id="modalVideoPlayer" controls class="w-full h-full object-contain focus:outline-none">
+                    הדפדפן שלך אינו תומך בניגון וידאו.
+                </video>
+                <div id="videoErrorFallback" class="hidden absolute inset-0 bg-slate-900 flex flex-col items-center justify-center p-6 text-center z-10">
+                    <div class="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/50 text-3xl mb-4">
+                        <i class="fa-solid fa-video-slash"></i>
                     </div>
-                    <p id="modalDescription" class="text-sm text-gray-600 leading-relaxed whitespace-pre-line break-words">
-                        תיאור הסרטון
-                    </p>
+                    <div id="videoFallbackTitle" class="font-bold text-white text-lg mb-2">קובץ ההקלטה מקומי</div>
+                    <p class="text-sm text-slate-400 max-w-md leading-relaxed">הסרטון נשמר באופן מקומי או שאינו זמין לתצוגה מקדימה בדפדפן. לחץ על "עריכת הסרטון" כדי לפתוח אותו ישירות בעורך OpenReel.</p>
+                </div>
+            </div>
+
+            <!-- Footer Details & Actions -->
+            <div class="p-6 bg-white flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+                <p id="modalDescription" class="text-sm text-slate-500 leading-relaxed whitespace-pre-line break-words flex-1 bg-slate-50 p-3 rounded-xl border border-slate-100 font-mono text-[11px] dir-ltr text-left">
+                    תיאור הסרטון / נתיב
+                </p>
+                
+                <div class="flex flex-wrap items-center gap-3 shrink-0 w-full md:w-auto">
+                    <a id="modalDownloadBtn" href="#" download class="flex-1 md:flex-none bg-white hover:bg-slate-50 text-slate-700 font-semibold py-2.5 px-4 rounded-xl border border-slate-200 shadow-sm transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
+                        <i class="fa-solid fa-download text-slate-400"></i> הורדה
+                    </a>
+                    <button onclick="openYouTubePublishModal()" class="flex-1 md:flex-none bg-red-50 hover:bg-red-100 text-red-600 font-semibold py-2.5 px-4 rounded-xl border border-red-100 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
+                        <i class="fa-brands fa-youtube"></i> יוטיוב
+                    </button>
+                    <button id="editVideoBtn" onclick="editVideo()" class="w-full md:w-auto bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2.5 px-6 rounded-xl shadow-md shadow-amber-500/20 transition-all flex items-center justify-center gap-2 cursor-pointer text-sm">
+                        <i class="fa-solid fa-scissors"></i> עריכת הסרטון
+                    </button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript for Dynamic Loading & Modal Handling -->
+    <!-- YouTube Settings Modal -->
+    <div id="youtubeSettingsModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-xl rounded-3xl shadow-2xl overflow-hidden relative flex flex-col border border-slate-100">
+            
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-100 text-red-600 flex items-center justify-center text-lg shrink-0">
+                        <i class="fa-brands fa-youtube"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">חיבור ל-YouTube</h3>
+                        <p class="text-[11px] text-slate-500">Google OAuth 2.0</p>
+                    </div>
+                </div>
+                <button onclick="closeYouTubeSettingsModal()" class="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 flex flex-col gap-5">
+                <!-- Connected State -->
+                <div id="youtubeChannelBox" class="hidden p-4 rounded-2xl border border-emerald-100 bg-emerald-50/50 flex flex-wrap items-center justify-between gap-4">
+                    <div class="flex items-center gap-4">
+                        <img id="ytChannelThumb" class="w-12 h-12 rounded-full border-2 border-emerald-200 object-cover shadow-sm" src="" alt="ערוץ">
+                        <div>
+                            <div class="flex items-center gap-2 mb-1">
+                                <span id="ytChannelTitle" class="font-bold text-slate-900 text-sm">שם ערוץ</span>
+                                <span class="bg-emerald-100 text-emerald-700 text-[10px] font-bold px-2 py-0.5 rounded-md">מחובר</span>
+                            </div>
+                            <div id="ytChannelSub" class="text-[11px] text-slate-600"></div>
+                        </div>
+                    </div>
+                    <button onclick="disconnectYouTube()" class="text-[11px] font-bold text-rose-600 hover:text-white bg-white hover:bg-rose-500 border border-rose-200 hover:border-rose-500 px-4 py-2 rounded-lg transition-all cursor-pointer">
+                        ניתוק חשבון
+                    </button>
+                </div>
+
+                <!-- Not Connected State -->
+                <div id="youtubeNotConnectedBox" class="flex flex-col gap-4">
+                    <div class="bg-blue-50/50 border border-blue-100 rounded-2xl p-4 flex items-start gap-3">
+                        <i class="fa-solid fa-circle-info text-blue-500 mt-0.5"></i>
+                        <p class="text-xs text-blue-800 leading-relaxed">
+                            כדי לאפשר העלאת סרטונים ישירה מהמערכת לערוץ שלך, עליך להתחבר עם חשבון גוגל. האימות מבוצע בצורה מאובטחת.
+                        </p>
+                    </div>
+
+                    <a id="ytLoginLink" href="/api/youtube/oauth/login" class="w-full bg-slate-900 hover:bg-slate-800 text-white font-semibold py-3.5 px-4 rounded-xl transition-all shadow-md flex items-center justify-center gap-3 cursor-pointer text-sm">
+                        <i class="fa-brands fa-google text-lg"></i>
+                        <span>התחבר עם חשבון Google</span>
+                    </a>
+                </div>
+
+                <!-- Advanced Settings (Collapsible) -->
+                <div class="border-t border-slate-100 pt-5 mt-2">
+                    <button type="button" onclick="toggleYtConfigForm()" class="text-xs font-semibold text-slate-500 hover:text-slate-800 flex items-center justify-between w-full cursor-pointer group">
+                        <span class="flex items-center gap-2"><i class="fa-solid fa-sliders text-slate-400 group-hover:text-slate-600 transition-colors"></i> הגדרות מפתחות מתקדמות (OAuth)</span>
+                        <i id="ytConfigCaret" class="fa-solid fa-chevron-down transition-transform text-slate-400"></i>
+                    </button>
+
+                    <div id="ytConfigForm" class="hidden mt-4 flex flex-col gap-4 bg-slate-50 p-5 rounded-2xl border border-slate-200">
+                        <p class="text-[11px] text-slate-500 leading-relaxed mb-1">
+                            הגדרת Client ID ו-Secret מותאמים אישית. ה-URI הנדרש להגדרות ב-GCP:
+                            <code class="block bg-slate-200/60 px-2 py-1.5 rounded mt-1.5 font-mono text-left dir-ltr text-[10px]" id="ytRedirectUriDisplay">http://localhost:5000/api/youtube/oauth/callback</code>
+                        </p>
+                        <div class="flex flex-col gap-3">
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1.5">Client ID</label>
+                                <input id="ytClientIdInput" type="text" placeholder="xxxx.apps.googleusercontent.com" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono dir-ltr text-left">
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-bold text-slate-700 mb-1.5">Client Secret</label>
+                                <input id="ytClientSecretInput" type="password" placeholder="GOCSPX-xxxx" class="w-full bg-white border border-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 transition-all font-mono dir-ltr text-left">
+                            </div>
+                        </div>
+                        <div class="flex justify-end pt-1">
+                            <button onclick="saveYouTubeConfig()" class="bg-indigo-50 hover:bg-indigo-100 text-indigo-600 font-semibold px-4 py-2 rounded-lg text-xs transition-colors cursor-pointer border border-indigo-100">
+                                שמור הגדרות
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- YouTube Video Publish Modal -->
+    <div id="youtubePublishModal" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm hidden items-center justify-center z-50 p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-lg rounded-3xl shadow-2xl overflow-hidden relative flex flex-col border border-slate-100">
+            
+            <div class="px-6 py-5 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center text-lg shrink-0 shadow-sm shadow-red-600/20">
+                        <i class="fa-solid fa-cloud-arrow-up"></i>
+                    </div>
+                    <div>
+                        <h3 class="text-base font-bold text-slate-900">פרסום ל-YouTube</h3>
+                        <p class="text-[11px] text-slate-500">העלאה ישירה של הקובץ לערוץ</p>
+                    </div>
+                </div>
+                <button onclick="closeYouTubePublishModal()" class="w-8 h-8 rounded-full hover:bg-slate-200 text-slate-500 flex items-center justify-center transition-colors cursor-pointer">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="p-6 flex flex-col gap-5">
+                <!-- Selected File Info -->
+                <div class="bg-slate-50 p-3 rounded-2xl border border-slate-200 flex items-center gap-3">
+                    <div class="w-10 h-10 rounded-xl bg-white border border-slate-200 flex items-center justify-center text-indigo-500 shrink-0">
+                        <i class="fa-solid fa-file-video"></i>
+                    </div>
+                    <div class="overflow-hidden flex-1">
+                        <div id="ytUploadFileName" class="text-xs font-bold text-slate-800 truncate">שם קובץ</div>
+                        <div id="ytUploadFilePath" class="text-[10px] text-slate-500 truncate dir-ltr text-left mt-0.5">נתיב קובץ</div>
+                    </div>
+                </div>
+
+                <!-- Form -->
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">כותרת הסרטון <span class="text-red-500">*</span></label>
+                        <input id="ytUploadTitle" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-sm focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all" placeholder="כותרת מושכת...">
+                    </div>
+
+                    <div>
+                        <label class="block text-xs font-bold text-slate-700 mb-1.5">תיאור</label>
+                        <textarea id="ytUploadDescription" rows="3" class="w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all resize-none" placeholder="ספר על הסרטון, קרדיטים, קישורים..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">רמת פרטיות</label>
+                            <select id="ytUploadPrivacy" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all appearance-none cursor-pointer">
+                                <option value="public">ציבורי (Public)</option>
+                                <option value="unlisted" selected>לא רשום (Unlisted)</option>
+                                <option value="private">פרטי (Private)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1.5">תגיות</label>
+                            <input id="ytUploadTags" type="text" class="w-full bg-white border border-slate-300 rounded-xl px-3 py-2.5 text-xs focus:outline-none focus:border-red-500 focus:ring-1 focus:ring-red-500 transition-all" placeholder="פסיק בין תגיות...">
+                        </div>
+                    </div>
+                </div>
+
+                <div id="ytUploadStatusAlert" class="hidden rounded-xl p-3.5 text-xs font-semibold"></div>
+
+            </div>
+            
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button type="button" onclick="closeYouTubePublishModal()" class="px-4 py-2.5 rounded-xl text-slate-600 hover:bg-slate-200 text-sm font-semibold transition-colors cursor-pointer">
+                    ביטול
+                </button>
+                <button id="ytSubmitUploadBtn" onclick="submitYouTubeUpload()" class="bg-red-600 hover:bg-red-700 text-white font-semibold px-6 py-2.5 rounded-xl transition-all shadow-md shadow-red-600/20 flex items-center justify-center gap-2 cursor-pointer text-sm">
+                    <i class="fa-solid fa-paper-plane text-xs"></i>
+                    <span>פרסם כעת</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let currentVideoPath = null;
         let currentVideoName = null;
@@ -269,13 +445,13 @@
                     const obsBanner = document.getElementById('obsSetupBanner');
 
                     if (currentUser.role === 'streamer') {
-                        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-indigo-100 text-indigo-800 border border-indigo-200';
+                        badgeEl.className = 'text-[10px] px-2 py-0.5 rounded-md font-bold bg-indigo-100 text-indigo-700 border border-indigo-200/50';
                         badgeEl.textContent = 'סטרימר (OBS)';
                         descEl.textContent = 'מחובר לשליטה בשידור והקלטות';
                         if (streamDeckBtn) streamDeckBtn.classList.remove('hidden');
                         if (obsBanner) obsBanner.classList.remove('hidden');
                     } else {
-                        badgeEl.className = 'text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-200';
+                        badgeEl.className = 'text-[10px] px-2 py-0.5 rounded-md font-bold bg-emerald-100 text-emerald-700 border border-emerald-200/50';
                         badgeEl.textContent = 'עורך תוכן';
                         descEl.textContent = 'מורשה לצפות, לערוך ולייצא קליפים';
                         if (streamDeckBtn) streamDeckBtn.classList.add('hidden');
@@ -298,19 +474,19 @@
                 if (countBadge) countBadge.textContent = editors.length;
 
                 if (!editors || editors.length === 0) {
-                    container.innerHTML = '<div class="text-xs text-gray-400 py-2">אין עורכים רשומים במערכת.</div>';
+                    container.innerHTML = '<div class="text-sm text-slate-400 py-2">אין עורכים רשומים במערכת.</div>';
                     return;
                 }
 
                 container.innerHTML = '';
                 editors.forEach(ed => {
                     const item = document.createElement('div');
-                    item.className = 'flex flex-col items-center gap-2 group';
+                    item.className = 'flex items-center gap-3 bg-white border border-slate-200 rounded-full pl-4 pr-1.5 py-1.5 shadow-sm group';
                     item.innerHTML = `
-                        <div class="w-14 h-14 rounded-full bg-gradient-to-tr from-emerald-500 to-teal-400 text-white shadow-md border-2 border-white flex items-center justify-center font-bold text-lg">
+                        <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-indigo-500 to-violet-400 text-white shadow-inner flex items-center justify-center font-bold text-sm shrink-0">
                             ${ed.display_name.charAt(0)}
                         </div>
-                        <span class="text-xs font-semibold text-gray-700 truncate max-w-[80px]" title="${ed.display_name}">
+                        <span class="text-xs font-semibold text-slate-700 truncate max-w-[100px]" title="${ed.display_name}">
                             ${ed.display_name.split(' ')[0]}
                         </span>
                     `;
@@ -352,133 +528,243 @@
                 if (editingBadge) editingBadge.innerText = editingList.length;
                 if (readyBadge) readyBadge.innerText = readyList.length;
 
-                // 1. Pending Clips (הקלטות OBS)
+                // 1. Pending Clips
                 if (pendingList.length === 0) {
-                    pendingContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע הקלטות חדשות בהמתנה. בצע הקלטה דרך ה-Stream Deck!</div>';
+                    pendingContainer.innerHTML = '<div class="text-slate-400 text-sm py-8 col-span-full text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">אין כרגע הקלטות חדשות בהמתנה.</div>';
                 } else {
                     pendingContainer.innerHTML = '';
                     [...pendingList].reverse().forEach(rec => {
                         const card = document.createElement('div');
-                        card.className = "bg-white rounded-xl shadow-sm hover:shadow-md h-64 flex flex-col justify-between p-3 relative border border-gray-200 transition cursor-pointer overflow-hidden group";
-                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #e5e7eb;';
-                        
+                        card.className = "bg-white rounded-2xl p-2.5 shadow-sm border border-slate-200 hover:shadow-card hover:-translate-y-0.5 hover:border-slate-300 transition-all duration-300 cursor-pointer group flex flex-col h-full";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);';
+                        const gdriveView = rec.gdrive_view_url || '';
+                        const gdriveDownload = rec.gdrive_download_url || '';
+                        const directUrl = gdriveDownload || gdriveView || '';
+                        const filePath = rec.file_path || rec.original_path || rec.file_name || '';
+
                         card.innerHTML = `
-                            <div class="w-full h-36 rounded-lg overflow-hidden relative shadow-inner border border-gray-200" style="${bgStyle}">
-                                <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                    <div class="w-10 h-10 rounded-full bg-white bg-opacity-95 flex items-center justify-center shadow">
-                                        <i class="fa-solid fa-play text-gray-800 ml-0.5"></i>
+                            <div class="w-full aspect-video rounded-xl relative overflow-hidden border border-slate-100 flex items-center justify-center bg-slate-900 shrink-0" style="${bgStyle}">
+                                ${!rec.thumbnail ? '<div class="flex flex-col items-center justify-center text-slate-500 gap-1.5"><i class="fa-solid fa-video text-2xl text-slate-400/50"></i><span class="text-[10px] text-slate-400 font-semibold tracking-wide">NO THUMBNAIL</span></div>' : ''}
+                                
+                                <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                    ${rec.duration || '00:00'}
+                                </div>
+
+                                ${gdriveView ? `
+                                <div class="absolute top-2 left-2 bg-indigo-600/90 text-white text-[9px] font-bold px-2 py-0.5 rounded-md flex items-center gap-1 shadow">
+                                    <i class="fa-brands fa-google-drive"></i> Drive
+                                </div>
+                                ` : ''}
+                                
+                                <div class="absolute inset-0 bg-indigo-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[1px]">
+                                    <div class="w-12 h-12 rounded-full bg-white/95 text-indigo-600 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                                        <i class="fa-solid fa-play text-lg ms-1"></i>
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-start text-xs text-gray-500 font-semibold mt-2">
-                                <span>${rec.date_time}</span>
-                                <span class="bg-gray-100 text-gray-700 px-2 py-0.5 rounded text-[11px] border border-gray-200">${rec.button_used || 'הקלטה'}</span>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <span class="text-sm font-bold text-gray-800">${rec.duration}</span>
-                                <span class="text-xs font-semibold text-gray-500 truncate max-w-[150px]">${rec.file_name}</span>
+                            <div class="flex flex-col justify-between flex-1 mt-3 px-1 pb-1">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <h4 class="text-sm font-bold text-slate-800 line-clamp-1 mb-1" title="${rec.file_name}">${rec.file_name}</h4>
+                                        <button onclick="event.stopPropagation(); deleteRecording('${rec.id}', '${rec.file_name}')" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer" title="מחק הקלטה">
+                                            <i class="fa-regular fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                                        <i class="fa-regular fa-clock"></i>
+                                        <span>${rec.date_time}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3 flex items-center justify-between gap-2">
+                                    <span class="inline-flex items-center bg-slate-100 text-slate-600 px-2 py-0.5 rounded text-[10px] font-bold border border-slate-200">${rec.button_used || 'הקלטה רגילה'}</span>
+                                    <button onclick="event.stopPropagation(); startEditingDirect('${encodeURIComponent(filePath)}', '${encodeURIComponent(rec.file_name || '')}', '${encodeURIComponent(directUrl)}')" class="bg-indigo-50 hover:bg-indigo-600 text-indigo-700 hover:text-white font-semibold py-1.5 px-3 rounded-lg text-xs transition-colors flex items-center gap-1 border border-indigo-200 hover:border-indigo-600 cursor-pointer">
+                                        <i class="fa-solid fa-scissors text-[10px]"></i> ערוך מיד
+                                    </button>
+                                </div>
                             </div>
                         `;
-                        card.onclick = () => openVideoModal(rec.file_name, `נתיב קובץ מלא:\n${rec.file_path}`, rec.file_path, 'pending', rec.id);
+                        card.onclick = () => openVideoModal(rec.file_name, `נתיב קובץ מלא:\n${filePath}`, filePath, 'pending', rec.id, gdriveView, gdriveDownload);
                         pendingContainer.appendChild(card);
                     });
                 }
 
-                // 2. In-Progress Editing Clips (קליפים בתהליך עריכה)
+                // 2. Editing Clips
                 if (editingList.length === 0) {
-                    editingContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין כרגע קליפים בתהליך עריכה. לחץ על "עריכת הסרטון" כדי לערוך!</div>';
+                    editingContainer.innerHTML = '<div class="text-slate-400 text-sm py-8 col-span-full text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">אין כרגע פרויקטים פתוחים.</div>';
                 } else {
                     editingContainer.innerHTML = '';
                     [...editingList].reverse().forEach(rec => {
                         const card = document.createElement('div');
-                        card.className = "bg-amber-50/40 rounded-xl shadow-sm hover:shadow-md flex flex-col justify-between p-3.5 relative border border-amber-300 transition cursor-pointer group";
-                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #fef3c7;';
+                        card.className = "bg-white rounded-2xl p-2.5 shadow-sm border border-amber-200/60 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group flex flex-col h-full";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #fffbeb;';
 
                         card.innerHTML = `
-                            <div class="w-full h-32 rounded-lg overflow-hidden relative shadow-inner border border-amber-200" style="${bgStyle}">
-                                <div class="absolute top-2 right-2">
-                                    <span class="bg-amber-500 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                                        <i class="fa-solid fa-spinner fa-spin-pulse text-[10px]"></i> בתהליך עריכה
+                            <div class="w-full aspect-video rounded-xl relative overflow-hidden border border-slate-100 bg-slate-100 shrink-0" style="${bgStyle}">
+                                <div class="absolute top-2 left-2">
+                                    <span class="bg-amber-100 text-amber-700 border border-amber-200/60 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1.5 backdrop-blur-md">
+                                        <div class="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse"></div> טיוטה פתוחה
                                     </span>
                                 </div>
+                                <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                    ${rec.duration || '00:00'}
+                                </div>
                             </div>
-                            <div class="flex flex-col gap-1.5 mt-2.5">
-                                <div class="flex justify-between items-center text-xs font-semibold">
-                                    <span class="text-gray-800 font-bold truncate max-w-[170px]">${rec.file_name || rec.project_name}</span>
-                                    <span class="text-amber-800 font-bold">${rec.duration || '00:00:00'}</span>
+                            <div class="flex flex-col justify-between flex-1 mt-3 px-1 pb-1">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <h4 class="text-sm font-bold text-slate-800 line-clamp-1 mb-1" title="${rec.file_name || rec.project_name}">${rec.file_name || rec.project_name}</h4>
+                                        <button onclick="event.stopPropagation(); deleteRecording('${rec.id}', '${rec.file_name || rec.project_name}')" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer" title="מחק הקלטה">
+                                            <i class="fa-regular fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                                        <i class="fa-solid fa-clock-rotate-left text-[10px]"></i>
+                                        <span>עודכן: ${rec.last_edited || rec.date_time}</span>
+                                    </div>
                                 </div>
-                                <div class="text-[11px] text-gray-500">
-                                    נשמר לאחרונה: ${rec.last_edited || rec.date_time}
-                                </div>
-                                <button onclick="event.stopPropagation(); resumeEditing('${rec.id}', '${encodeURIComponent(rec.original_path || rec.file_path || '')}', '${encodeURIComponent(rec.file_name || '')}')" class="w-full mt-2 bg-amber-500 hover:bg-amber-600 text-white font-semibold py-2 px-3 rounded-lg text-xs transition flex items-center justify-center shadow-sm cursor-pointer">
-                                    <i class="fa-solid fa-arrow-rotate-right ml-1.5 text-[11px]"></i> המשך עריכה מאיפה שהפסקת
+                                <button onclick="event.stopPropagation(); resumeEditing('${rec.id}', '${encodeURIComponent(rec.original_path || rec.file_path || rec.file_name || '')}', '${encodeURIComponent(rec.file_name || '')}')" class="w-full mt-3 bg-amber-50 hover:bg-amber-500 text-amber-700 hover:text-white font-semibold py-2 px-3 rounded-lg text-xs transition-colors flex items-center justify-center gap-1.5 border border-amber-200 hover:border-amber-500 cursor-pointer">
+                                    <i class="fa-solid fa-arrow-right text-[10px]"></i> המשך עריכה
                                 </button>
                             </div>
                         `;
-                        card.onclick = () => resumeEditing(rec.id, rec.original_path || rec.file_path || '', rec.file_name || '');
+                        card.onclick = () => resumeEditing(rec.id, rec.original_path || rec.file_path || rec.file_name || '', rec.file_name || '');
                         editingContainer.appendChild(card);
                     });
                 }
 
-                // 3. Ready Clips (קליפים מוכנים)
+                // 3. Ready Clips
                 if (readyList.length === 0) {
-                    readyContainer.innerHTML = '<div class="text-gray-400 text-sm py-4 col-span-3">אין עדיין קליפים שיוצאו. לחץ על Export בעורך הוידאו!</div>';
+                    readyContainer.innerHTML = '<div class="text-slate-400 text-sm py-8 col-span-full text-center bg-slate-50 rounded-2xl border border-dashed border-slate-200">לא נמצאו קליפים מיוצאים.</div>';
                 } else {
                     readyContainer.innerHTML = '';
                     [...readyList].reverse().forEach(rec => {
                         const card = document.createElement('div');
-                        card.className = "bg-emerald-50/30 rounded-xl shadow-sm hover:shadow-md h-64 flex flex-col justify-between p-3 relative border border-emerald-300 transition cursor-pointer overflow-hidden group";
-                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #d1fae5;';
+                        card.className = "bg-white rounded-2xl p-2.5 shadow-sm border border-emerald-200/60 hover:shadow-card hover:-translate-y-0.5 transition-all duration-300 cursor-pointer group flex flex-col h-full";
+                        const bgStyle = rec.thumbnail ? `background-image: url('${rec.thumbnail}'); background-size: cover; background-position: center;` : 'background-color: #f0fdf4;';
 
                         card.innerHTML = `
-                            <div class="w-full h-36 rounded-lg overflow-hidden relative shadow-inner border border-emerald-200" style="${bgStyle}">
-                                <div class="absolute top-2 right-2">
-                                    <span class="bg-emerald-600 text-white text-[11px] font-bold px-2 py-0.5 rounded-full shadow flex items-center gap-1">
-                                        <i class="fa-solid fa-check text-[10px]"></i> מוכן
+                            <div class="w-full aspect-video rounded-xl relative overflow-hidden border border-slate-100 bg-slate-100 shrink-0" style="${bgStyle}">
+                                <div class="absolute top-2 left-2">
+                                    <span class="bg-emerald-100 text-emerald-700 border border-emerald-200/60 text-[10px] font-bold px-2 py-1 rounded-md shadow-sm flex items-center gap-1.5 backdrop-blur-md">
+                                        <i class="fa-solid fa-check"></i> ייצוא הושלם
                                     </span>
                                 </div>
-                                <div class="absolute inset-0 bg-black bg-opacity-20 flex items-center justify-center opacity-0 group-hover:opacity-100 transition">
-                                    <div class="w-10 h-10 rounded-full bg-white bg-opacity-95 flex items-center justify-center shadow">
-                                        <i class="fa-solid fa-play text-emerald-700 ml-0.5"></i>
+                                <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-white text-[10px] font-bold px-2 py-0.5 rounded-md">
+                                    ${rec.duration || '00:00'}
+                                </div>
+                                <div class="absolute inset-0 bg-emerald-900/10 opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-center justify-center backdrop-blur-[1px]">
+                                    <div class="w-12 h-12 rounded-full bg-white/95 text-emerald-600 flex items-center justify-center shadow-lg transform scale-90 group-hover:scale-100 transition-transform duration-300">
+                                        <i class="fa-solid fa-play text-lg ms-1"></i>
                                     </div>
                                 </div>
                             </div>
-                            <div class="flex justify-between items-start text-xs text-gray-500 font-semibold mt-2">
-                                <span>${rec.date_time}</span>
-                                <span class="bg-emerald-100 text-emerald-800 px-2 py-0.5 rounded text-[11px] font-bold">ייצוא מוכן</span>
-                            </div>
-                            <div class="flex justify-between items-end">
-                                <span class="text-sm font-bold text-emerald-800">${rec.duration}</span>
-                                <span class="text-xs font-semibold text-gray-600 truncate max-w-[150px]">${rec.file_name}</span>
+                            <div class="flex flex-col justify-between flex-1 mt-3 px-1 pb-1">
+                                <div>
+                                    <div class="flex items-center justify-between gap-2">
+                                        <h4 class="text-sm font-bold text-slate-800 line-clamp-1 mb-1" title="${rec.file_name}">${rec.file_name}</h4>
+                                        <button onclick="event.stopPropagation(); deleteRecording('${rec.id}', '${rec.file_name}')" class="text-slate-400 hover:text-rose-600 p-1 rounded-lg transition-colors cursor-pointer" title="מחק הקלטה">
+                                            <i class="fa-regular fa-trash-can text-xs"></i>
+                                        </button>
+                                    </div>
+                                    <div class="flex items-center gap-2 text-[11px] text-slate-500 font-medium">
+                                        <i class="fa-regular fa-calendar text-[10px]"></i>
+                                        <span>${rec.date_time}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-3">
+                                    <span class="inline-flex items-center bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded text-[10px] font-bold border border-emerald-200/50">מוכן לפרסום</span>
+                                </div>
                             </div>
                         `;
-                        card.onclick = () => openVideoModal(rec.file_name, `נשמר בתיקיית exports:\n${rec.file_path}`, rec.file_path, 'ready', rec.id);
+                        card.onclick = () => openVideoModal(rec.file_name, `נשמר בתיקיית exports:\n${rec.file_path || rec.file_name}`, rec.file_path || rec.file_name, 'ready', rec.id, rec.gdrive_view_url, rec.gdrive_download_url);
                         readyContainer.appendChild(card);
                     });
                 }
 
             } catch (err) {
                 console.error(err);
-                if (pendingContainer) pendingContainer.innerHTML = '<div class="text-red-500 text-sm py-4 col-span-3">שגיאה בטעינת הנתונים מהשרת.</div>';
+                if (pendingContainer) pendingContainer.innerHTML = '<div class="text-red-500 text-sm py-4 col-span-full">שגיאה בטעינת הנתונים מהשרת.</div>';
             }
         }
 
-        function openVideoModal(title, description, filePath, status = 'pending', id = null) {
-            currentVideoPath = filePath;
-            currentVideoName = title;
+        async function deleteRecording(recId, fileName) {
+            if (!confirm(`האם למחוק את הקלטה "${fileName}" מהדשבורד?`)) return;
+            try {
+                const res = await fetch(`/api/recordings/${encodeURIComponent(recId)}`, {
+                    method: 'DELETE'
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    loadRecordings();
+                } else {
+                    alert('שגיאה במחיקת ההקלטה: ' + data.message);
+                }
+            } catch (err) {
+                alert('שגיאה בתקשורת עם השרת: ' + err.message);
+            }
+        }
+
+        let currentGdriveUrl = null;
+
+        function openVideoModal(title, description, filePath, status = 'pending', id = null, gdriveView = null, gdriveDownload = null) {
+            currentVideoPath = filePath || title || id;
+            currentVideoName = title || 'recording.mp4';
             currentDraftId = id;
+            currentGdriveUrl = gdriveDownload || gdriveView || null;
 
             document.getElementById('modalTitle').innerText = title;
             document.getElementById('modalDescription').innerText = description;
             
             const videoPlayer = document.getElementById('modalVideoPlayer');
-            const videoUrl = `/api/video?path=${encodeURIComponent(filePath)}`;
-            videoPlayer.src = videoUrl;
+            const videoIframe = document.getElementById('modalVideoIframe');
+            const fallbackEl = document.getElementById('videoErrorFallback');
+            const fallbackTitle = document.getElementById('videoFallbackTitle');
+            if (fallbackTitle) fallbackTitle.innerText = title || 'קובץ ההקלטה';
+            if (fallbackEl) fallbackEl.classList.add('hidden');
+            if (videoIframe) {
+                videoIframe.classList.add('hidden');
+                videoIframe.src = 'about:blank';
+            }
+            videoPlayer.classList.remove('hidden');
+
+            const localAgentUrl = `http://127.0.0.1:5050/api/video?path=${encodeURIComponent(currentVideoPath)}`;
+            const fallbackServerUrl = `/api/video?path=${encodeURIComponent(currentVideoPath)}`;
+            const directStreamUrl = gdriveDownload || localAgentUrl;
+
+            let triedFallback = false;
+            videoPlayer.onerror = () => {
+                if (!triedFallback) {
+                    triedFallback = true;
+                    if (gdriveView) {
+                        videoPlayer.pause();
+                        videoPlayer.classList.add('hidden');
+                        if (videoIframe) {
+                            videoIframe.src = gdriveView;
+                            videoIframe.classList.remove('hidden');
+                        }
+                    } else {
+                        videoPlayer.src = fallbackServerUrl;
+                        videoPlayer.load();
+                    }
+                } else {
+                    if (gdriveView && videoIframe) {
+                        videoPlayer.classList.add('hidden');
+                        videoIframe.src = gdriveView;
+                        videoIframe.classList.remove('hidden');
+                    } else if (fallbackEl) {
+                        fallbackEl.classList.remove('hidden');
+                    }
+                }
+            };
+            videoPlayer.onloadeddata = () => {
+                if (fallbackEl) fallbackEl.classList.add('hidden');
+            };
+            videoPlayer.src = directStreamUrl;
             videoPlayer.load();
 
             const downloadBtn = document.getElementById('modalDownloadBtn');
             if (downloadBtn) {
-                downloadBtn.href = videoUrl;
+                downloadBtn.href = gdriveDownload || localAgentUrl;
                 downloadBtn.setAttribute('download', title || 'video.mp4');
             }
 
@@ -487,19 +773,19 @@
 
             if (status === 'ready') {
                 if (statusBadge) {
-                    statusBadge.innerText = 'קליפ מוכן';
-                    statusBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 border border-emerald-300';
+                    statusBadge.innerHTML = '<i class="fa-solid fa-check me-1"></i> קליפ מוכן';
+                    statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700 border border-emerald-200/50';
                 }
                 if (editBtn) {
-                    editBtn.innerHTML = '<i class="fa-solid fa-scissors ml-2"></i> עריכה מחדש';
+                    editBtn.innerHTML = '<i class="fa-solid fa-scissors"></i> עריכה מחדש';
                 }
             } else {
                 if (statusBadge) {
-                    statusBadge.innerText = 'הקלטה ממתינה';
-                    statusBadge.className = 'text-xs font-bold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700 border border-gray-300';
+                    statusBadge.innerHTML = '<i class="fa-regular fa-clock me-1"></i> הקלטה ממתינה';
+                    statusBadge.className = 'text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-600 border border-slate-200';
                 }
                 if (editBtn) {
-                    editBtn.innerHTML = '<i class="fa-solid fa-scissors ml-2"></i> עריכת הסרטון';
+                    editBtn.innerHTML = '<i class="fa-solid fa-scissors"></i> עריכת הסרטון';
                 }
             }
 
@@ -510,6 +796,8 @@
 
         function closeVideoModal() {
             const videoPlayer = document.getElementById('modalVideoPlayer');
+            const fallbackEl = document.getElementById('videoErrorFallback');
+            if (fallbackEl) fallbackEl.classList.add('hidden');
             videoPlayer.pause();
             videoPlayer.src = '';
 
@@ -523,7 +811,7 @@
             try {
                 newTab = window.open('about:blank', '_blank');
                 if (newTab) {
-                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>ממשיך עריכה...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111827;color:#f3f4f6;font-family:sans-serif;"><div style="font-size:40px;margin-bottom:16px;">✂️</div><div style="font-size:20px;font-weight:600;">ממשיך את עריכת הסרטון מאיפה שהפסקת...</div><div style="font-size:14px;color:#9ca3af;margin-top:8px;">טוען את נתוני הפרויקט והציר, אנא המתן רגע...</div></body></html>');
+                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>ממשיך עריכה...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#f8fafc;font-family:system-ui,sans-serif;"><div style="font-size:48px;margin-bottom:20px;animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">✂️</div><div style="font-size:22px;font-weight:600;">פותח את הפרויקט מחדש...</div><div style="font-size:14px;color:#94a3b8;margin-top:10px;">מיד תועבר ל-OpenReel, אנא המתן</div><style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }</style></body></html>');
                 }
             } catch (e) {
                 console.warn(e);
@@ -558,6 +846,50 @@
             }
         }
 
+        async function startEditingDirect(filePath, fileName, directUrl = '') {
+            const pathDecoded = decodeURIComponent(filePath || '');
+            const nameDecoded = decodeURIComponent(fileName || pathDecoded.split('/').pop().split('\\').pop() || 'recording.mp4');
+            const urlDecoded = decodeURIComponent(directUrl || '');
+
+            let newTab = null;
+            try {
+                newTab = window.open('about:blank', '_blank');
+                if (newTab) {
+                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>פותח את OpenReel...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#f8fafc;font-family:system-ui,sans-serif;"><div style="font-size:48px;margin-bottom:20px;animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">🎬</div><div style="font-size:22px;font-weight:600;">מכין את הסרטון לעריכה...</div><div style="font-size:14px;color:#94a3b8;margin-top:10px;">מיד תועבר לעורך הווידאו OpenReel</div><style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }</style></body></html>');
+                }
+            } catch (tabErr) {
+                console.warn('Could not pre-open blank tab:', tabErr);
+            }
+
+            try {
+                const response = await fetch('/api/open-editor', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        path: pathDecoded,
+                        name: nameDecoded,
+                        videoUrl: urlDecoded || undefined
+                    })
+                });
+
+                const data = await response.json();
+                if (data.status === 'success' && data.url) {
+                    if (newTab && !newTab.closed) {
+                        newTab.location.href = data.url;
+                    } else {
+                        window.open(data.url, '_blank') || (window.location.href = data.url);
+                    }
+                } else {
+                    if (newTab && !newTab.closed) newTab.close();
+                    alert('שגיאה בפתיחת העורך: ' + (data.message || 'שגיאה לא ידועה'));
+                }
+            } catch (err) {
+                console.error('Error opening editor:', err);
+                if (newTab && !newTab.closed) newTab.close();
+                alert('שגיאה בפנייה לשרת: ' + err.message);
+            }
+        }
+
         async function editVideo() {
             if (!currentVideoPath) {
                 alert('לא נבחר סרטון לעריכה. נא ללחוץ על סרטון מתוך הרשימה.');
@@ -565,18 +897,17 @@
             }
 
             const editBtn = document.getElementById('editVideoBtn');
-            const originalHtml = editBtn ? editBtn.innerHTML : 'עריכת הסרטון';
+            const originalHtml = editBtn ? editBtn.innerHTML : '<i class="fa-solid fa-scissors"></i> עריכת הסרטון';
             if (editBtn) {
                 editBtn.disabled = true;
-                editBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin ml-2"></i> פותח ב-OpenReel...';
+                editBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> פותח בעורך...';
             }
 
-            // פותחים טאב באופן סינכרוני כדי למנוע חסימת פופ-אפ על ידי הדפדפן (Chrome Popup Blocker)
             let newTab = null;
             try {
                 newTab = window.open('about:blank', '_blank');
                 if (newTab) {
-                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>פותח את OpenReel...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#111827;color:#f3f4f6;font-family:sans-serif;"><div style="font-size:36px;margin-bottom:16px;">🎬</div><div style="font-size:18px;font-weight:600;">פותח את עורך הסרטונים OpenReel...</div><div style="font-size:14px;color:#9ca3af;margin-top:8px;">טוען את הסרטון לעריכה, אנא המתן רגע...</div></body></html>');
+                    newTab.document.write('<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF-8"><title>פותח את OpenReel...</title></head><body style="margin:0;display:flex;flex-direction:column;align-items:center;justify-content:center;height:100vh;background:#0f172a;color:#f8fafc;font-family:system-ui,sans-serif;"><div style="font-size:48px;margin-bottom:20px;animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;">🎬</div><div style="font-size:22px;font-weight:600;">מכין את הסביבה...</div><div style="font-size:14px;color:#94a3b8;margin-top:10px;">פותח את עורך הווידאו OpenReel</div><style>@keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: .5; } }</style></body></html>');
                 }
             } catch (tabErr) {
                 console.warn('Could not pre-open blank tab:', tabErr);
@@ -588,7 +919,9 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         path: currentVideoPath,
-                        name: currentVideoName
+                        name: currentVideoName,
+                        draftId: currentDraftId || undefined,
+                        videoUrl: currentGdriveUrl || undefined
                     })
                 });
 
@@ -615,10 +948,6 @@
             }
         }
 
-        function publishVideo() {
-            alert('הסרטון נשלח לפרסום!');
-        }
-
         async function setupOBSCanvas() {
             try {
                 const res = await fetch('/api/obs/setup-canvas', { method: 'POST' });
@@ -633,10 +962,281 @@
             }
         }
 
-        window.onclick = function(event) {
-            const modal = document.getElementById('videoModal');
-            if (event.target === modal) {
-                closeVideoModal();
+        let youtubeStatus = { configured: true, authenticated: false, channel: null };
+
+        async function checkYouTubeStatus() {
+            try {
+                const res = await fetch('/api/youtube/status');
+                if (!res.ok) return;
+                const json = await res.json();
+                youtubeStatus = json.data || {};
+                updateYouTubeUI();
+            } catch (e) {
+                console.error("Failed to load YouTube status:", e);
+            }
+        }
+
+        function updateYouTubeUI() {
+            const btnText = document.getElementById('youtubeHeaderBtnText');
+            const statusDot = document.getElementById('youtubeStatusDot');
+            const channelBox = document.getElementById('youtubeChannelBox');
+            const notConnectedBox = document.getElementById('youtubeNotConnectedBox');
+            const ytLoginLink = document.getElementById('ytLoginLink');
+
+            const redirectDisplay = document.getElementById('ytRedirectUriDisplay');
+            if (redirectDisplay) {
+                redirectDisplay.textContent = window.location.origin + "/api/youtube/oauth/callback";
+            }
+
+            if (youtubeStatus.authenticated && youtubeStatus.channel) {
+                if (btnText) btnText.textContent = youtubeStatus.channel.title || 'מחובר';
+                if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]';
+
+                if (channelBox) channelBox.classList.remove('hidden');
+                if (notConnectedBox) notConnectedBox.classList.add('hidden');
+
+                const thumb = document.getElementById('ytChannelThumb');
+                const title = document.getElementById('ytChannelTitle');
+                const sub = document.getElementById('ytChannelSub');
+
+                if (thumb) thumb.src = youtubeStatus.channel.thumbnail || '';
+                if (title) title.textContent = youtubeStatus.channel.title || 'ערוץ YouTube';
+                if (sub) {
+                    const subsCount = youtubeStatus.channel.subscribers ? (Number(youtubeStatus.channel.subscribers).toLocaleString() + ' מנויים') : '';
+                    const vidsCount = youtubeStatus.channel.video_count ? (youtubeStatus.channel.video_count + ' סרטונים') : '';
+                    sub.textContent = [subsCount, vidsCount].filter(Boolean).join(' • ');
+                }
+            } else {
+                if (btnText) btnText.textContent = 'חיבור ליוטיוב';
+                if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-300';
+
+                if (channelBox) channelBox.classList.add('hidden');
+                if (notConnectedBox) notConnectedBox.classList.remove('hidden');
+
+                if (ytLoginLink) {
+                    ytLoginLink.onclick = null;
+                    ytLoginLink.href = '/api/youtube/oauth/login';
+                }
+            }
+        }
+
+        function openYouTubeSettingsModal() {
+            checkYouTubeStatus();
+            document.getElementById('youtubeSettingsModal').classList.remove('hidden');
+            document.getElementById('youtubeSettingsModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeYouTubeSettingsModal() {
+            document.getElementById('youtubeSettingsModal').classList.add('hidden');
+            document.getElementById('youtubeSettingsModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        function toggleYtConfigForm(forceOpen = false) {
+            const form = document.getElementById('ytConfigForm');
+            const caret = document.getElementById('ytConfigCaret');
+            if (forceOpen || form.classList.contains('hidden')) {
+                form.classList.remove('hidden');
+                caret.classList.add('rotate-180');
+            } else {
+                form.classList.add('hidden');
+                caret.classList.remove('rotate-180');
+            }
+        }
+
+        async function saveYouTubeConfig() {
+            const clientId = document.getElementById('ytClientIdInput').value.trim();
+            const clientSecret = document.getElementById('ytClientSecretInput').value.trim();
+
+            if (!clientId || !clientSecret) {
+                alert('נא להזין גם Client ID וגם Client Secret');
+                return;
+            }
+
+            try {
+                const res = await fetch('/api/youtube/config', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ client_id: clientId, client_secret: clientSecret })
+                });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    alert('✅ הגדרות נשמרו בהצלחה!');
+                    toggleYtConfigForm(false);
+                    checkYouTubeStatus();
+                } else {
+                    alert('שגיאה בשמירת הגדרות: ' + data.message);
+                }
+            } catch (err) {
+                alert('שגיאה בפנייה לשרת: ' + err.message);
+            }
+        }
+
+        async function disconnectYouTube() {
+            if (!confirm('האם אתה בטוח שברצונך לנתק את ערוץ ה-YouTube מהמערכת?')) return;
+            try {
+                const res = await fetch('/api/youtube/disconnect', { method: 'POST' });
+                const data = await res.json();
+                if (data.status === 'success') {
+                    checkYouTubeStatus();
+                }
+            } catch (e) {
+                alert('שגיאה בניתוק החשבון: ' + e.message);
+            }
+        }
+
+        function openYouTubePublishModal() {
+            if (!currentVideoPath) {
+                alert('לא נבחר סרטון לפרסום');
+                return;
+            }
+
+            closeVideoModal();
+
+            const fileNameEl = document.getElementById('ytUploadFileName');
+            const filePathEl = document.getElementById('ytUploadFilePath');
+            const titleInput = document.getElementById('ytUploadTitle');
+            const statusAlert = document.getElementById('ytUploadStatusAlert');
+
+            if (fileNameEl) fileNameEl.textContent = currentVideoName || 'וידאו';
+            if (filePathEl) filePathEl.textContent = currentVideoPath;
+            if (titleInput) {
+                const cleanName = (currentVideoName || '').replace(/\.[^/.]+$/, "");
+                titleInput.value = cleanName || 'קליפ חדש משידור חי';
+            }
+            if (statusAlert) statusAlert.classList.add('hidden');
+
+            document.getElementById('youtubePublishModal').classList.remove('hidden');
+            document.getElementById('youtubePublishModal').classList.add('flex');
+            document.body.style.overflow = 'hidden';
+
+            if (!youtubeStatus.authenticated) {
+                alert('שימו לב: חשבון ה-YouTube אינו מחובר. תוכלו להתחבר דרך כפתור "יוטיוב" בתפריט.');
+            }
+        }
+
+        function closeYouTubePublishModal() {
+            document.getElementById('youtubePublishModal').classList.add('hidden');
+            document.getElementById('youtubePublishModal').classList.remove('flex');
+            document.body.style.overflow = 'auto';
+        }
+
+        async function submitYouTubeUpload() {
+            if (!youtubeStatus.authenticated) {
+                alert('יש להתחבר תחילה לחשבון YouTube.');
+                closeYouTubePublishModal();
+                openYouTubeSettingsModal();
+                return;
+            }
+
+            const title = document.getElementById('ytUploadTitle').value.trim();
+            const description = document.getElementById('ytUploadDescription').value.trim();
+            const privacy = document.getElementById('ytUploadPrivacy').value;
+            const tags = document.getElementById('ytUploadTags').value.trim();
+            const btn = document.getElementById('ytSubmitUploadBtn');
+            const statusAlert = document.getElementById('ytUploadStatusAlert');
+
+            if (!title) {
+                alert('נא להזין כותרת לסרטון');
+                return;
+            }
+
+            btn.disabled = true;
+            const originalBtnHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i><span>מעלה...</span>';
+
+            statusAlert.className = 'rounded-xl p-3.5 text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200 block';
+            statusAlert.innerHTML = '<div class="flex items-center gap-2"><i class="fa-solid fa-spinner fa-spin"></i> הסרטון נשלח ומועלה ל-YouTube, נא להמתין...</div>';
+
+            try {
+                const res = await fetch('/api/youtube/upload', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        file_path: currentVideoPath,
+                        title: title,
+                        description: description,
+                        privacy: privacy,
+                        tags: tags
+                    })
+                });
+
+                const data = await res.json();
+                if (data.status === 'success') {
+                    const videoUrl = data.data.url;
+                    statusAlert.className = 'rounded-xl p-3 text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200 block';
+                    statusAlert.innerHTML = '<div class="flex items-center justify-between"><span>✅ הסרטון פורסם בהצלחה ב-YouTube!</span><a href="' + videoUrl + '" target="_blank" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded-lg font-bold transition-colors">צפה בסרטון</a></div>';
+                    setTimeout(() => {
+                        closeYouTubePublishModal();
+                        window.open(videoUrl, '_blank');
+                    }, 3000);
+                } else {
+                    statusAlert.className = 'rounded-xl p-3.5 text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block';
+                    statusAlert.textContent = '❌ ' + (data.message || 'שגיאה בהעלאה ליוטיוב');
+                }
+            } catch (err) {
+                statusAlert.className = 'rounded-xl p-3.5 text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200 block';
+                statusAlert.textContent = '❌ שגיאת רשת: ' + err.message;
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalBtnHtml;
+            }
+        }
+
+        let gdriveStatus = { configured: true, authenticated: false, email: null };
+
+        async function checkGDriveStatus() {
+            try {
+                const res = await fetch('/api/gdrive/status');
+                if (!res.ok) return;
+                const json = await res.json();
+                gdriveStatus = json.data || {};
+                updateGDriveUI();
+            } catch (e) {
+                console.error("Failed to load Google Drive status:", e);
+            }
+        }
+
+        function updateGDriveUI() {
+            const btnText = document.getElementById('gdriveHeaderBtnText');
+            const statusDot = document.getElementById('gdriveStatusDot');
+
+            if (gdriveStatus.authenticated) {
+                if (btnText) btnText.textContent = gdriveStatus.email ? gdriveStatus.email.split('@')[0] : 'Drive מחובר';
+                if (statusDot) statusDot.className = 'w-2 h-2 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.8)]';
+            } else {
+                if (btnText) btnText.textContent = 'Google Drive';
+                if (statusDot) statusDot.className = 'w-1.5 h-1.5 rounded-full bg-slate-300';
+            }
+        }
+
+        function toggleGDriveAuth() {
+            if (gdriveStatus.authenticated) {
+                if (confirm(`האם לנתק את החיבור ל-Google Drive (${gdriveStatus.email || ''})?`)) {
+                    fetch('/api/gdrive/disconnect', { method: 'POST' })
+                        .then(r => r.json())
+                        .then(() => checkGDriveStatus());
+                }
+            } else {
+                window.location.href = '/api/gdrive/oauth/login';
+            }
+        }
+
+        function checkOAuthUrlParams() {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('youtube_connected') === 'true') {
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (params.get('youtube_error')) {
+                alert('❌ שגיאה באימות YouTube: ' + decodeURIComponent(params.get('youtube_error')));
+                window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            if (params.get('gdrive_connected') === 'true') {
+                alert('✅ Google Drive חובור בהצלחה!');
+                window.history.replaceState({}, document.title, window.location.pathname);
+            } else if (params.get('gdrive_error')) {
+                alert('❌ שגיאה באימות Google Drive: ' + decodeURIComponent(params.get('gdrive_error')));
+                window.history.replaceState({}, document.title, window.location.pathname);
             }
         }
 
@@ -654,14 +1254,11 @@
                     txt.textContent = `${data.free_gb} GB פנוי מתוך ${data.total_gb} GB (${percent}%)`;
                     
                     if (percent > 90) {
-                        bar.className = 'bg-rose-500 h-2.5 rounded-full transition-all duration-500';
-                        txt.className = 'text-rose-600 font-bold';
+                        bar.className = 'bg-rose-500 h-full rounded-full transition-all duration-700 ease-out';
                     } else if (percent > 75) {
-                        bar.className = 'bg-amber-500 h-2.5 rounded-full transition-all duration-500';
-                        txt.className = 'text-amber-600 font-bold';
+                        bar.className = 'bg-amber-500 h-full rounded-full transition-all duration-700 ease-out';
                     } else {
-                        bar.className = 'bg-indigo-600 h-2.5 rounded-full transition-all duration-500';
-                        txt.className = 'text-indigo-600 font-bold';
+                        bar.className = 'bg-indigo-500 h-full rounded-full transition-all duration-700 ease-out';
                     }
                 }
             } catch (err) {
@@ -670,12 +1267,14 @@
             }
         }
 
-        // Load auth, editors, and recordings on page open
         window.onload = function() {
             initAuth();
             loadEditors();
             loadRecordings();
             loadStorageInfo();
+            checkGDriveStatus();
+            checkYouTubeStatus();
+            checkOAuthUrlParams();
         };
     </script>
 </body>

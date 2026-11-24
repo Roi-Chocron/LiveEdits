@@ -71,6 +71,16 @@ def init_db():
     )
     ''')
 
+    # טבלת הגדרות אפליקציה כלליות (הגדרות YouTube OAuth, טוקנים וכו')
+    cursor.execute('''
+    CREATE TABLE IF NOT EXISTS app_settings (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+    )
+    ''')
+
+
     # יצירת משתמשי ברירת מחדל במידה ולא קיימים
     default_users = [
         ("streamer", hash_password("streamer123"), "עודד (סטרימר)", "streamer", None),
@@ -199,6 +209,38 @@ def get_connected_editors():
     conn.close()
     return [dict(r) for r in rows]
 
+
+# ----------------- App Settings (General Configuration & OAuth) -----------------
+
+def get_app_setting(key: str) -> str:
+    """Retrieves a configuration value from app_settings by key."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT value FROM app_settings WHERE key = ?', (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row['value'] if row else None
+
+def set_app_setting(key: str, value: str):
+    """Sets or updates a configuration value in app_settings."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute('''
+    INSERT OR REPLACE INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, ?)
+    ''', (key, value, now_str))
+    conn.commit()
+    conn.close()
+
+def delete_app_setting(key: str):
+    """Deletes a key from app_settings."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM app_settings WHERE key = ?', (key,))
+    conn.commit()
+    conn.close()
+
 # ----------------- Recordings & Clips Database Functions -----------------
 
 def db_add_recording(record_data: dict):
@@ -321,6 +363,38 @@ def db_get_all_recordings():
     rows = cursor.fetchall()
     conn.close()
     return [dict(r) for r in rows]
+
+
+# ----------------- App Settings (General Configuration & OAuth) -----------------
+
+def get_app_setting(key: str) -> str:
+    """Retrieves a configuration value from app_settings by key."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('SELECT value FROM app_settings WHERE key = ?', (key,))
+    row = cursor.fetchone()
+    conn.close()
+    return row['value'] if row else None
+
+def set_app_setting(key: str, value: str):
+    """Sets or updates a configuration value in app_settings."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    now_str = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    cursor.execute('''
+    INSERT OR REPLACE INTO app_settings (key, value, updated_at)
+    VALUES (?, ?, ?)
+    ''', (key, value, now_str))
+    conn.commit()
+    conn.close()
+
+def delete_app_setting(key: str):
+    """Deletes a key from app_settings."""
+    conn = get_db_connection()
+    cursor = conn.cursor()
+    cursor.execute('DELETE FROM app_settings WHERE key = ?', (key,))
+    conn.commit()
+    conn.close()
 
 # Initialize tables when module is imported
 init_db()
